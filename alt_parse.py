@@ -514,10 +514,10 @@ def parse_test_file():
 def parse_uploaded_file(file):
     result = {}
     try:
-        with open(file, 'r') as readf:
-            cash_flow = parse_cash_flow(readf)
-            combat = parse_combat(readf)
-            healing = parse_healing(readf)
+        # with open(file, 'r') as readf:
+        cash_flow = parse_cash_flow(file)
+        combat = parse_combat(file)
+        healing = parse_healing(file)
 
             # print_money(cash_flow)
             # print_combat(combat)
