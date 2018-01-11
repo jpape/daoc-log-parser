@@ -16,7 +16,8 @@ def index():
 
 @app.route('/test', methods=['GET', 'POST'])
 def test_endpoint():
-    return alt_parse.parse_test_file()
+    # return alt_parse.parse_test_file()
+    return "Test passed"
 
 @app.route('/upload', methods=['POST'])
 def capture_upload():
