@@ -1,7 +1,9 @@
 import alt_parse
 from flask import Flask, request, render_template
 from flask_cors import CORS
+import os
 
+port = int(os.environ.get('PORT', 5000))
 app = Flask(__name__, static_url_path='', static_folder='dist')
 CORS(app)
 
@@ -35,4 +37,4 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=False, port = port)
