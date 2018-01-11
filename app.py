@@ -1,10 +1,10 @@
-import alt_parse
 from flask import Flask, request, render_template
 from flask_cors import CORS
 import os
+import alt_parse
 
-port = int(os.environ.get('PORT', 5000))
 app = Flask(__name__, static_url_path='', static_folder='dist')
+# app = Flask(__name__)
 CORS(app)
 
 ALLOWED_EXTENSIONS = set(['txt', 'log'])
@@ -12,6 +12,7 @@ ALLOWED_EXTENSIONS = set(['txt', 'log'])
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
+    # return render_template('index.html')
 
 @app.route('/test', methods=['GET', 'POST'])
 def test_endpoint():
@@ -37,4 +38,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':
-    app.run(debug=False, port = port)
+    # port = int(os.environ.get("PORT", 5000))
+    # app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=True)
+    

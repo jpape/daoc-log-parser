@@ -3,16 +3,18 @@
         <file-drop headertext="Drop files here" (onFileDrop)="onFileUploaded($event)">
         </file-drop>
     </div> -->
-
+    
     <input type="file" (change)="fileChange($event)" placeholder="Upload file" accept=".log, .txt">
 
     <div>
         <h1><b>Parse Results</b></h1>
+        Current Port: {{currentPort}}
     </div>
 
     <div class="container-fluid">
         <form [formGroup]="parsedLogForm" class="form-group">
             <div class="row">
+                    
                 <div class="col-sm-2">
                     <h3 class="panel-heading">Money</h3>
                         <!-- <div>

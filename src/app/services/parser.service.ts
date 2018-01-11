@@ -12,14 +12,14 @@ export class ParserService {
     private httpService: HttpService
   ) { }
 
-  sendFileToParse(file) : Observable<Response> {
+  sendFileToParse(file, currentPort) : Observable<Response> {
     let formData:FormData = new FormData();
     formData.append('logfile', file, file.name);
     let optHeaders = new Headers();
     // optHeaders.append('Content-Type', 'multipart/form-data');
     optHeaders.append('Accept', 'application/json');
     let options = new RequestOptions({ headers: optHeaders});
-    return this.httpService.post('http://127.0.0.1:5000/upload', formData, options)
+    return this.httpService.post('https://localhost:'+currentPort+'/upload', formData, options)
       .map((response: Response) => {
         let res = response.json();
         return res;
