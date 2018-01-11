@@ -12,12 +12,11 @@ ALLOWED_EXTENSIONS = set(['txt', 'log'])
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
-    # return render_template('index.html')
 
 @app.route('/test', methods=['GET', 'POST'])
 def test_endpoint():
-    # return alt_parse.parse_test_file()
-    return "Test passed"
+    return render_template('index.html')
+
 
 @app.route('/upload', methods=['POST'])
 def capture_upload():
