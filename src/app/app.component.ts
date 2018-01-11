@@ -29,12 +29,9 @@ export class AppComponent implements OnInit{
   meleeTargets: string[]
   defenseSources: string[]
 
-  currentPort: string;
-
 
   ngOnInit() {
     this.buildEmptyForm();
-    this.currentPort = document.location.port;
   }
 
 
@@ -53,7 +50,7 @@ export class AppComponent implements OnInit{
 
   onFileUploaded(event: UploadEvent) {
     let file = event.files[0];
-    this.parserService.sendFileToParse(file, this.currentPort)
+    this.parserService.sendFileToParse(file)
       .subscribe(
         (results: any) => {
           let castedResults = results as ParsingResults;
@@ -74,7 +71,7 @@ export class AppComponent implements OnInit{
   fileChange(event) {
     let fileList: FileList = event.target.files;
     let file = fileList[0];
-    this.parserService.sendFileToParse(file, this.currentPort)
+    this.parserService.sendFileToParse(file)
       .subscribe(
         (results: any) => {
           let castedResults = results as ParsingResults;

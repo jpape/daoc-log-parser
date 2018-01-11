@@ -12,7 +12,7 @@ export class ParserService {
     private httpService: HttpService
   ) { }
 
-  sendFileToParse(file, currentPort) : Observable<Response> {
+  sendFileToParse(file) : Observable<Response> {
     let formData:FormData = new FormData();
     formData.append('logfile', file, file.name);
     let optHeaders = new Headers();
