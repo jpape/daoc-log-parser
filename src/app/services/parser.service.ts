@@ -19,7 +19,7 @@ export class ParserService {
     // optHeaders.append('Content-Type', 'multipart/form-data');
     optHeaders.append('Accept', 'application/json');
     let options = new RequestOptions({ headers: optHeaders});
-    return this.httpService.post('https://localhost:'+currentPort+'/upload', formData, options)
+    return this.httpService.post('https://daoc-log-parse.herokuapp.com/upload', formData, options)
       .map((response: Response) => {
         let res = response.json();
         return res;
