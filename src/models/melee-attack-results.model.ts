@@ -10,6 +10,14 @@ export class MeleeAttackResults {
         public TotalAttacks: number,
         public Misses: number,
         public CritDamage: number,
-        public Targets: string[]
+        public Targets: string[],
+        public Percents: {
+            Hits: number,
+            Blocks: number,
+            Crits: number,
+            Misses: number,
+            Evades: number,
+            Parries: number
+        }
     ) {}
 }

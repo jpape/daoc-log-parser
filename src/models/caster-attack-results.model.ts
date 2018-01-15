@@ -7,6 +7,11 @@ export class CasterAttackResults {
         public TotalAttacks: number,
         public Resists: number,
         public CritDamage: number,
-        public Targets: string[]
+        public Targets: string[],
+        public Percents: {
+            Landed: number,
+            Crits: number,
+            Resists: number
+        }
     ) {}
 }

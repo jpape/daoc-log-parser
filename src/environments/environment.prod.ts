@@ -1,3 +1,4 @@
 export const environment = {
-  production: true
+  production: true,
+  parserUploadUrl: "https://daoc-log-parse.herokuapp.com"
 };

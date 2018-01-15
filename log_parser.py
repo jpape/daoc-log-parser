@@ -6,6 +6,8 @@ __date__ = "2018/01/04"
 import json
 import operator
 
+CHAT_MESSAGE_INDICATOR = "@@"
+
 GOLD_PICKUP_MESSAGE = 'You pick up'
 # [19:04:48] You pick up 1 gold, 5 silver and 61 copper pieces.
 GOLD_FOR_KILL_MESSAGE = 'for this kill'
@@ -25,15 +27,25 @@ MELEE_OFFENSE_ATTACK_BLOCK_MESSAGE = 'blocks your attack'
 MELEE_OFFENSE_ATTACK_MISS_MESSAGE = 'you miss'
 
 CASTER_OFFENSE_ATTACK_MESSAGE = 'You hit'
-# [21:57:40] You hit Aser for 269 (-14) damage! //Casted damage
-# [19:40:26] You hit the cave trow for 75 damage! //Proc damage
+# [21:57:40] You hit Aser for 269 (-14) damage!
 CASTER_OFFENSE_SPELL_RESIST_MESSAGE = 'resists the effect'
 # [21:57:59] Krok resists the effect!
 
-CRITICAL_HIT_OFFENSE_MESSAGE = 'You critical hit the'
+CRITICAL_HIT_OFFENSE_MESSAGE = 'You critical hit'
 # [19:05:13] You critical hit the cave trow for an additional 41 damage!
-CRITICAL_HIT_SPELL_MESSAGE = 'critical hit for'
+CRITICAL_HIT_SPELL_MESSAGE = 'You critical hit for'
 # [21:57:19] You critical hit for an additional 41 damage!
+
+DEFENSE_DEATH_MESSAGE = 'You have died'
+# [21:32:23] You have died.  Type /release to return to your last bindpoint.
+OFFENSE_DEATHBLOW_MESSAGE = 'You just killed'
+# [21:16:07] You just killed Healina!
+REALM_POINTS_EARNED_MESSAGE = 'realm points!'
+# [21:16:07] You get 171 realm points!
+BONUS_REALM_POINTS_EARNED_MESSAGE = 'extra realm points'
+# [21:16:07] You get 3 extra realm points for outpost ownership!
+RECENT_KILL_NO_REALM_POINTS_MESSAGE = 'and is worth no realm points!'
+# [22:03:03] Laddy has been killed recently and is worth no realm points!
 
 MELEE_DEFENSE_BLOCK_MESSAGE = 'you block the blow'
 # [19:05:20] The cave trow attacks you and you block the blow!
@@ -78,7 +90,9 @@ def parse_trade_money(readf):
     money_spent = 0
     money_gained = 0
     for line in readf:
-        if MONEY_RECEIVED_MESSAGE in line:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif MONEY_RECEIVED_MESSAGE in line:
             money_gained = parse_money_denomination(line)
         elif MONEY_SPENT_MESSAGE in line:
             money_spent = parse_money_denomination(line)
@@ -91,6 +105,8 @@ def parse_loot_money(readf):
     readf.seek(0)
     money_looted = 0
     for line in readf:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
         if GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line:
             money_looted += parse_money_denomination(line)
     total_loot = currency_breakdown(money_looted)
@@ -129,6 +145,7 @@ def parse_combat(readf):
     combat['MeleeAttack'] = parse_melee_attack(readf)
     combat['CasterAttack'] = parse_caster_attack(readf)
     combat['Defense'] = parse_defense_combat(readf)
+    combat['Summary'] = parse_combat_summary(readf)
 
     return combat
 
@@ -145,10 +162,11 @@ def parse_melee_attack(readf):
     result['Evades'] = 0
     result['Parries'] = 0
     result['Blocks'] = 0
-    #TODO: What does this look like?
     result['Misses'] = 0
     for line in readf:
-        if MELEE_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE in line:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif MELEE_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE in line:
             result['Hits'] += 1
             damage_and_target = parse_damage_and_target(line)
             result['BaseDamage'] += damage_and_target[0]
@@ -157,13 +175,14 @@ def parse_melee_attack(readf):
             else:
                 targets[damage_and_target[1]] = damage_and_target[0]
         elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
-            result['Crits'] += 1
-            damage_and_target = parse_damage_and_target(line)
-            result['CritDamage'] += damage_and_target[0]
-            if damage_and_target[1] in targets.keys():
-                targets[damage_and_target[1]] += damage_and_target[0]
-            else:
-                targets[damage_and_target[1]] = damage_and_target[0]
+            if line.split()[4] != 'for': #If the 4th word isn't "for" then it is a melee crit, not a spell
+                result['Crits'] += 1
+                damage_and_target = parse_damage_and_target(line)
+                result['CritDamage'] += damage_and_target[0]
+                if damage_and_target[1] in targets.keys():
+                    targets[damage_and_target[1]] += damage_and_target[0]
+                else:
+                    targets[damage_and_target[1]] = damage_and_target[0]
         elif MELEE_OFFENSE_ATTACK_EVADE_MESSAGE in line:
             result['Evades'] += 1
         elif MELEE_OFFENSE_ATTACK_PARRY_MESSAGE in line:
@@ -178,6 +197,10 @@ def parse_melee_attack(readf):
     result['TotalAttacks'] = result['Hits'] + result['Misses'] + \
         result['Evades'] + result['Parries'] + result['Blocks']
     result['TotalDamage'] = result['BaseDamage'] + result['CritDamage']
+
+    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses', 'Crits']
+    result = calculate_attack_percents(result, melee_events)
+
     return result
 
 def parse_caster_attack(readf):
@@ -193,7 +216,9 @@ def parse_caster_attack(readf):
     result['BaseDamage'] = 0
     result['CritDamage'] = 0
     for line in readf:
-        if CASTER_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_ATTACK_MESSAGE not in line:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif CASTER_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_ATTACK_MESSAGE not in line:
             result['Landed'] += 1
             damage_and_target = parse_damage_and_target(line)
             result['BaseDamage'] += damage_and_target[0]
@@ -201,14 +226,15 @@ def parse_caster_attack(readf):
                 targets[damage_and_target[1]] += damage_and_target[0]
             else:
                 targets[damage_and_target[1]] = damage_and_target[0]
-        elif CRITICAL_HIT_SPELL_MESSAGE in line:
-            result['Crits'] += 1
-            damage_and_target = parse_damage_and_target(line)
-            result['CritDamage'] += damage_and_target[0]
-            if damage_and_target[1] in targets.keys():
-                targets[damage_and_target[1]] += damage_and_target[0]
-            else:
-                targets[damage_and_target[1]] = damage_and_target[0]
+        elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
+            if line.split()[4] == 'for': #If the 4th word isn't "for" then it is a melee crit, not a spell
+                result['Crits'] += 1
+                damage_and_target = parse_damage_and_target(line)
+                result['CritDamage'] += damage_and_target[0]
+                if damage_and_target[1] in targets.keys():
+                    targets[damage_and_target[1]] += damage_and_target[0]
+                else:
+                    targets[damage_and_target[1]] = damage_and_target[0]
         elif CASTER_OFFENSE_SPELL_RESIST_MESSAGE in line:
             result['Resists'] += 1
 
@@ -216,6 +242,20 @@ def parse_caster_attack(readf):
 
     result['TotalDamage'] = result['BaseDamage'] + result['CritDamage']
     result['TotalAttacks'] = result['Landed'] + result['Resists']
+
+    caster_events = ['Landed', 'Resists', 'Crits']
+    result = calculate_attack_percents(result, caster_events)
+
+    return result
+
+def calculate_attack_percents(result, event_list):
+    result['Percents'] = {}
+    for event in event_list:
+        if result['TotalAttacks'] > 0:
+            result['Percents'][event] = '{0:.2f}'.format(float(result[event])/result['TotalAttacks'])
+        else:
+            result['Percents'][event] = 0
+    
     return result
 
 ## TODO: Can we differentiate between spells and procs?
@@ -238,7 +278,9 @@ def parse_defense_combat(readf):
     result['SpellsLanded'] = 0
     result['SpellDamage'] = 0
     for line in readf:
-        if MELEE_DEFENSE_BLOCK_MESSAGE in line:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif MELEE_DEFENSE_BLOCK_MESSAGE in line:
             result['Blocks'] += 1
         elif MELEE_DEFENSE_PARRY_MESSAGE in line:
             result['Parries'] += 1
@@ -279,15 +321,66 @@ def parse_defense_combat(readf):
 
     result['TotalMeleeAttacks'] = result['Blocks'] + result['Parries'] + result['Evades'] + \
         result['Hits'] + result['Misses']
-
     result['TotalSpellAttacks'] = result['Resists'] + result['SpellsLanded']
-
     result['TotalAttacks'] = result['TotalMeleeAttacks'] + result['TotalSpellAttacks']
-    
     result['TotalDamage'] = result['MeleeDamage'] + result['CritDamage'] + result['SpellDamage']
+
+    result = parse_defense_percents(result)
 
     return result
 
+def parse_defense_percents(result):
+    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses']
+    
+    result['Percents'] = {}
+
+    for event in melee_events:
+        if result['TotalMeleeAttacks'] > 0:
+            result['Percents'][event] = '{0:.2f}'.format(float(result[event])/result['TotalMeleeAttacks'])
+        else:
+            result['Percents'][event] = 0
+
+    caster_events = ['SpellsLanded', 'Resists']
+    for event in caster_events:
+        if result['TotalSpellAttacks'] > 0:
+            result['Percents'][event] = '{0:.2f}'.format(float(result[event])/result['TotalSpellAttacks'])
+        else:
+            result['Percents'][event] = 0
+    
+    return result
+
+
+def parse_combat_summary(readf):
+    """Parses RPs, Deathblows, and Deaths"""
+    readf.seek(0)
+    result = {}
+    result['DeathblowCount'] = 0
+    deathblows = {}
+    result['RPs'] = 0
+    result['Deaths'] = 0
+
+    for line in readf:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif OFFENSE_DEATHBLOW_MESSAGE in line:
+            result['DeathblowCount'] += 1
+            split_line = line.split()
+            deathblow = split_line[len(split_line)-1]
+            deathblow_target = deathblow[0:len(deathblow)-1]
+            if deathblow_target in deathblows.keys():
+                deathblows[deathblow_target] += 1
+            else:
+                deathblows[deathblow_target] = 1
+        elif REALM_POINTS_EARNED_MESSAGE in line or BONUS_REALM_POINTS_EARNED_MESSAGE in line:
+            if RECENT_KILL_NO_REALM_POINTS_MESSAGE not in line:
+                result['RPs'] += int(line.split()[3])
+        elif DEFENSE_DEATH_MESSAGE in line:
+            result['Deaths'] += 1
+
+    result['DeathBlows'] = sorted(deathblows.items(), key=operator.itemgetter(1), reverse=True)
+
+    return result
+    
 
 def parse_damage_and_source(line):
     """Helper method that finds the amount of damage and who it was dealt by"""
@@ -354,16 +447,18 @@ def parse_healing(readf):
     healing['Lifetapped'] = 0
     healing['Delivered'] = 0
     for line in readf:
-        if HEALING_RECEIVED_MESSAGE in line:
+        if CHAT_MESSAGE_INDICATOR in line:
+            continue
+        elif HEALING_RECEIVED_MESSAGE in line:
             healing_and_source = parse_healing_and_source(line)
             healing['Received'] += healing_and_source[0]
             if healing_and_source[1] in sources.keys():
                 sources[healing_and_source[1]] += healing_and_source[0]
             else:
                 sources[healing_and_source[1]] = healing_and_source[0]
-        if LIFETAP_HEALTH_STOLEN_MESSAGE in line:
+        elif LIFETAP_HEALTH_STOLEN_MESSAGE in line:
             healing['Lifetapped'] += parse_healing_and_source(line)[0]
-        if HEALING_DELIVERED_MESSAGE in line:
+        elif HEALING_DELIVERED_MESSAGE in line:
             healing_and_target = parse_healing_and_target(line)
             healing['Delivered'] += healing_and_target[0]
             if healing_and_target[1] in targets.keys():
@@ -514,21 +609,14 @@ def parse_test_file():
 def parse_uploaded_file(file):
     result = {}
     try:
-        # with open(file, 'r') as readf:
         cash_flow = parse_cash_flow(file)
         combat = parse_combat(file)
         healing = parse_healing(file)
-
-            # print_money(cash_flow)
-            # print_combat(combat)
-            # print_healing(healing)
-            # print('\n\n')
 
         result['Cash'] = cash_flow
         result['Combat'] = combat
         result['Healing'] = healing
         j_result = json.dumps(result)
-        # print(j_result)
         
         return j_result
 
@@ -549,6 +637,3 @@ def currency_print_helper(currency_dict):
         result_text += str(currency_dict[3]) + 'c'
 
     return result_text
-
-
-# parse_test_file()

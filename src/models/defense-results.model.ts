@@ -16,6 +16,15 @@ export class DefenseResults {
         public SpellsLanded: number,
         public CritDamage: number,
         public TotalMeleeAttacks: number,
-        public TotalSpellAttacks: number
+        public TotalSpellAttacks: number,
+        public Percents: {
+            Hits: number,
+            Blocks: number,
+            Parries: number,
+            Evades: number,
+            Misses: number,
+            SpellsLanded: number,
+            Resists: number
+        }
     ) {}
 }
