@@ -7,9 +7,9 @@ CORS(app)
 
 ALLOWED_EXTENSIONS = set(['txt', 'log'])
 
-# @app.route('/')
-# def index():
-#     return app.send_static_file('index.html')
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
 @app.route('/test', methods=['GET'])
 def test_endpoint():
