@@ -98,7 +98,7 @@
             <div class="row">
                 <h3>Combat</h3>
                 <div class="panel-default panel">
-                    <div class="col-sm-3">
+                    <div class="col-sm-2">
                         <h4>Melee Attack</h4>
                             <table class="table-striped striped">
                                 <tr>
@@ -168,7 +168,7 @@
                                 </table>
                             </div>
                     </div>
-                    <div class="col-sm-3">
+                    <div class="col-sm-4">
                         <h4>Caster Attack</h4>
                             <table class="table-striped striped">
                                 <tr>
@@ -219,6 +219,27 @@
                                     <tr *ngFor="let dmgTarget of resultsForPage.Combat.CasterAttack.Targets">
                                         <td>{{dmgTarget[0]}}</td>
                                         <td style="text-align: right">{{dmgTarget[1] | number}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div *ngIf="resultsForPage.Combat.CasterAttack.SpellStats">
+                                <br/>
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th>Spell</th>
+                                        <th style="text-align:center">Casted</th>
+                                        <th style="text-align:center">Landed</th>
+                                        <th style="text-align:center">Resisted</th>
+                                        <th style="text-align:center">Crits</th>
+                                        <th style="text-align:center">Total Dmg</th>
+                                    </tr>
+                                    <tr *ngFor="let spell of resultsForPage.Combat.CasterAttack.SpellStats">
+                                        <td>{{spell[0]}}</td>
+                                        <td style="text-align:center">{{spell[1][0] | number}}</td>
+                                        <td style="text-align:center">{{spell[1][1] | number}}</td>
+                                        <td style="text-align:center">{{spell[1][2] | number}}</td>
+                                        <td style="text-align:center">{{spell[1][3] | number}}</td>
+                                        <td style="text-align:center">{{spell[1][4] | number}}</td>
                                     </tr>
                                 </table>
                             </div>

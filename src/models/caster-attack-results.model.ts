@@ -12,6 +12,7 @@ export class CasterAttackResults {
             Landed: number,
             Crits: number,
             Resists: number
-        }
+        },
+        public SpellStats: string[][]
     ) {}
 }

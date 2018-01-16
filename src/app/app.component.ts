@@ -25,8 +25,16 @@ export class AppComponent implements OnInit{
   todoList = [
     'Determine if bleed damage is distinct from proc/spell damage',
     'Wild healing?',
-    'How is kill-count determined?'
+    'How is kill-count determined?',
+    'Pet damage',
+    'Style growth rates',
+    'Add self-healing to received',
+    'Stats per spell',
+    'Unassigned crits',
+    'Calculate all AOE dmg for 1 cast'
   ]
+
+  errorMessageList = []
 
 
   ngOnInit() {
@@ -39,7 +47,11 @@ export class AppComponent implements OnInit{
     this.parserService.sendFileToParse(file)
       .subscribe(
         (results: any) => {
-          let castedResults = results as ParsingResults;
+          let messages = results['Messages']
+          if (messages) {
+            this.errorMessageList = messages;
+          }
+          let castedResults = results['Results'] as ParsingResults;
           if (castedResults) {
             this.resultsForPage = castedResults;
           }
