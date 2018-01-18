@@ -78,8 +78,8 @@
                             </tr>
                         </table>
                     <br/>
+                    <thead><strong>Deathblow list:</strong></thead>
                     <table class="scrollTable">
-                        <thead><strong>Deathblow list:</strong></thead>
                         <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
                             <td>{{db[0]}}</td>
                             <td>{{db[1] | number}}</td>
@@ -98,7 +98,7 @@
             <div class="row">
                 <h3>Combat</h3>
                 <div class="panel-default panel">
-                    <div class="col-sm-2">
+                    <div class="col-sm-3">
                         <h4>Melee Attack</h4>
                             <table class="table-striped striped">
                                 <tr>
@@ -158,17 +158,29 @@
                                 </tr>
                             </table>
                             <br/>
-                            <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length">
+                            <!-- <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length"> -->
                                 <thead><strong>Damage Breakdown:</strong></thead>
-                                <table class="scrollTable table-striped scrollStriped">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Hits</th>
+                                        <th style="text-align:center">Blocks</th>
+                                        <th style="text-align:center">Parries</th>
+                                        <th style="text-align:center">Evades</th>
+                                        <th style="text-align:center">Dmg</th>
+                                    </tr>
                                     <tr *ngFor="let dmgTarget of resultsForPage.Combat.MeleeAttack.Targets">
                                         <td>{{dmgTarget[0]}}</td>
-                                        <td style="text-align: right">{{dmgTarget[1] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[1] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[2] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[3] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[4] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[5] | number}}</td>
                                     </tr>
                                 </table>
-                            </div>
+                            <!-- </div> -->
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-sm-3">
                         <h4>Caster Attack</h4>
                             <table class="table-striped striped">
                                 <tr>
@@ -244,7 +256,7 @@
                                 </table>
                             </div>
                     </div>
-                    <div class="col-sm-3">
+                    <div class="col-sm-2">
                         <h4>Defense</h4>
                             <table class="table-striped striped">
                                 <tr>
@@ -338,6 +350,21 @@
                                     </tr>
                                 </table>
                             </div>
+                    </div>
+                    <div class="col-sm-2" *ngIf="resultsForPage.Combat.Defense.Hits > 0">
+                        <h4>Armor Hits</h4>
+                            <table class="table-striped striped">
+                                <tr>
+                                    <th>Armor</th>
+                                    <th style="text-align: right">Hits</th>
+                                    <th style="text-align: right">Percent</th>
+                                </tr>
+                                <tr *ngFor="let armor of resultsForPage.Combat.Defense.ArmorHits">
+                                    <td>{{armor[0]}}</td>
+                                    <td style="text-align: right">{{armor[1] | number}}</td>
+                                    <td style="text-align: right">{{(armor[1]/resultsForPage.Combat.Defense.Hits) | percent:'2.0-2'}}</td>
+                                </tr>
+                            </table>
                     </div>
                 </div>
             </div>

@@ -169,7 +169,6 @@ def parse_melee_attack(readf, error_messages):
     readf.seek(0)
     current_line = 0
     result = {}
-    result['Targets'] = []
     result['Hits'] = 0
     result['BaseDamage'] = 0
     result['Crits'] = 0
@@ -178,7 +177,9 @@ def parse_melee_attack(readf, error_messages):
     result['Parries'] = 0
     result['Blocks'] = 0
     result['Misses'] = 0
+    
     targets = {}
+    # targets[<name>] = [<hits>,<blocks>,<parries>,<evades>,<dmg>]
 
     styles = {}
     weapon_dmg = {}
@@ -194,7 +195,7 @@ def parse_melee_attack(readf, error_messages):
                 continue
             elif MELEE_STYLE_MESSAGE in line:
                 split_line = line.split()
-                style = split_line[4:split_line.index('perfectly!')]
+                style =  ' '.join(split_line[4:split_line.index('perfectly!')])
                 gr = split_line[len(split_line)-1]
                 if style in style_grs.keys():
                     style_grs[style] = [style_grs[style][0] +1, style_grs[style][1] + gr]
@@ -202,22 +203,16 @@ def parse_melee_attack(readf, error_messages):
                     style_grs[style] = [1, gr]
             elif MELEE_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE in line:
                 result['Hits'] += 1
-                # damage_and_target = parse_damage_and_target(line)
-                # result['BaseDamage'] += damage_and_target[0]
-                # if damage_and_target[1] in targets.keys():
-                #     targets[damage_and_target[1]] += damage_and_target[0]
-                # else:
-                #     targets[damage_and_target[1]] = damage_and_target[0]
 
-                targ_weap_dmg = get_target_weapon_and_damage(line)
+                targ_weap_dmg = get_target_weapon_and_damage(line, True, False)
                 result['BaseDamage'] += targ_weap_dmg[2]
+
                 # Dmg per target
                 if targ_weap_dmg[0] in targets.keys():
-                    targets[targ_weap_dmg[0]] += targ_weap_dmg[2]
+                    targets[targ_weap_dmg[0]][0] += 1
+                    targets[targ_weap_dmg[0]][4] += targ_weap_dmg[2]
                 else:
-                    print('Known targets: {0}'.format(targets.keys()))
-                    print('Target not found: {0}'.format(targ_weap_dmg[0]))
-                    targets[targ_weap_dmg[0]] = targ_weap_dmg[2]
+                    targets[targ_weap_dmg[0]] = [1, 0, 0, 0, targ_weap_dmg[2]]
 
                 # Dmg per style
                 if style != '':
@@ -229,24 +224,47 @@ def parse_melee_attack(readf, error_messages):
                     style_dmg['unstyled'] += targ_weap_dmg[2]
 
             elif MELEE_OFFENSE_DMG_ADD_MESSAGE in line:
-                damage_and_target = parse_damage_and_target(line)
-                result['BaseDamage'] += damage_and_target[0]
-                targets[damage_and_target[1]] += damage_and_target[0]
+                targ_weap_dmg = get_target_weapon_and_damage(line, False, False)
+                result['BaseDamage'] += targ_weap_dmg[2]
+                targets[targ_weap_dmg[0]][4] += targ_weap_dmg[2]
             elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
-                if line.split()[4] != 'for': #If the 4th word isn't "for" then it is a melee crit, not a spell
+                #If the 4th word isn't "for" then it is a melee crit, not a spell
+                if line.split()[4] != 'for': 
                     result['Crits'] += 1
-                    damage_and_target = parse_damage_and_target(line)
-                    result['CritDamage'] += damage_and_target[0]
-                    if damage_and_target[1] in targets.keys():
-                        targets[damage_and_target[1]] += damage_and_target[0]
+                    targ_weap_dmg = get_target_weapon_and_damage(line, True, True)
+                    result['CritDamage'] += targ_weap_dmg[2]
+                    if targ_weap_dmg[0] in targets.keys():
+                        targets[targ_weap_dmg[0]][4] += targ_weap_dmg[2]
                     else:
-                        targets[damage_and_target[1]] = damage_and_target[0]
+                        targets[targ_weap_dmg[0]][4] = targ_weap_dmg[2]
             elif MELEE_OFFENSE_ATTACK_EVADE_MESSAGE in line:
                 result['Evades'] += 1
+                split_line = line.split()
+                target = ' '.join(split_line[1:split_line.index('evades')])
+                target = target.replace('The', '')
+                if target in targets.keys():
+                    targets[target][3] += 1
+                else:
+                    targets[target] = [0, 0, 0, 1, 0]
             elif MELEE_OFFENSE_ATTACK_PARRY_MESSAGE in line:
                 result['Parries'] += 1
+                split_line = line.split()
+                target = ' '.join(split_line[1:split_line.index('parries')])
+                target = target.replace('The', '')
+                if target in targets.keys():
+                    targets[target][2] += 1
+                else:
+                    targets[target] = [0, 0, 1, 0, 0]
             elif MELEE_OFFENSE_ATTACK_BLOCK_MESSAGE in line:
                 result['Blocks'] += 1
+                split_line = line.split()
+                target = ' '.join(split_line[1:split_line.index('blocks')])
+                target = target.replace('The', '')
+                if target in targets.keys():
+                    targets[target][1] += 1
+                else:
+                    targets[target] = [0, 1, 0, 0, 0]
+                
             elif MELEE_OFFENSE_ATTACK_MISS_MESSAGE in line:
                 result['Misses'] += 1
             style = ''
@@ -254,7 +272,9 @@ def parse_melee_attack(readf, error_messages):
             error_messages.append('MA (line {0}): {1}'.format(current_line, err))
             continue
 
-    result['Targets'] = sorted(targets.items(), key=operator.itemgetter(1), reverse=True)
+    target_list = dict_to_list(targets)
+    result['Targets'] = sorted(target_list, key=operator.itemgetter(5), reverse=True)
+    
 
     result['TotalAttacks'] = result['Hits'] + result['Misses'] + \
         result['Evades'] + result['Parries'] + result['Blocks']
@@ -267,6 +287,29 @@ def parse_melee_attack(readf, error_messages):
         error_messages.append('MAP: {0}'.format(err))
 
     return result
+
+# targets[<name>] = [<hits>,<blocks>,<parries>,<evades>,<dmg>]
+def dict_to_list(dict_to_sort):
+    dict_list = []
+    for name, values in dict_to_sort.items():
+        one_list = []
+        one_list.append(name)
+        for val in values:
+            one_list.append(val)
+        
+        dict_list.append(one_list)
+    
+    return dict_list
+
+def list_to_dict(ld):
+    result = {}
+    for item in ld:
+        name = ld[0]
+        item.remove(name)
+        result[name] = item
+    
+    return result
+
 
 def parse_caster_attack(readf, error_messages):
     """Parses the log file for casting statistics.
@@ -306,12 +349,12 @@ def parse_caster_attack(readf, error_messages):
                 spell_cast_time = split_line[0]
             elif CASTER_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_DMG_ADD_MESSAGE not in line:
                 result['Landed'] += 1
-                damage_and_target = parse_damage_and_target(line)
-                result['BaseDamage'] += damage_and_target[0]
-                if damage_and_target[1] in targets.keys():
-                    targets[damage_and_target[1]] += damage_and_target[0]
+                target_weapon_damage = get_target_weapon_and_damage(line, False, False)
+                result['BaseDamage'] += target_weapon_damage[2]
+                if target_weapon_damage[0] in targets.keys():
+                    targets[target_weapon_damage[0]] += target_weapon_damage[2]
                 else:
-                    targets[damage_and_target[1]] = damage_and_target[0]
+                    targets[target_weapon_damage[0]] = target_weapon_damage[2]
 
                 spell_time = line.split()[0]
                 if spell_time != spell_cast_time:
@@ -321,18 +364,17 @@ def parse_caster_attack(readf, error_messages):
                     spell_name = 'DD/Proc'
 
                 spells[spell_name][1] += 1
-                spells[spell_name][4] += damage_and_target[0]
-
+                spells[spell_name][4] += target_weapon_damage[2]
             elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
-                #If the 4th word isn't "for" then it is a melee crit, not a spell
+                #If the 4th word is "for" then it is a spell crit, not melee
                 if line.split()[4] == 'for':
                     result['Crits'] += 1
-                    damage_and_target = parse_damage_and_target(line)
-                    result['CritDamage'] += damage_and_target[0]
-                    if damage_and_target[1] in targets.keys():
-                        targets[damage_and_target[1]] += damage_and_target[0]
+                    target_weapon_damage = get_target_weapon_and_damage(line, False, True)
+                    result['CritDamage'] += target_weapon_damage[2]
+                    if target_weapon_damage[0] in targets.keys():
+                        targets[target_weapon_damage[0]] += target_weapon_damage[2]
                     else:
-                        targets[damage_and_target[1]] = damage_and_target[0]
+                        targets[target_weapon_damage[0]] = target_weapon_damage[2]
 
                     spell_time = line.split()[0]
                     if spell_time != spell_cast_time:
@@ -341,8 +383,7 @@ def parse_caster_attack(readf, error_messages):
                         spell_name = 'DD/Proc'
 
                     spells[spell_name][3] += 1
-                    spells[spell_name][4] += damage_and_target[0]
-                    
+                    spells[spell_name][4] += target_weapon_damage[0]
             elif CASTER_OFFENSE_SPELL_RESIST_MESSAGE in line:
                 result['Resists'] += 1
 
@@ -402,6 +443,13 @@ def parse_defense_combat(readf, error_messages):
     result['Absorbed'] = 0
     result['SpellsLanded'] = 0
     result['SpellDamage'] = 0
+    armor_hits = {}
+    armor_hits['head'] = 0
+    armor_hits['torso'] = 0
+    armor_hits['arm'] = 0
+    armor_hits['hand'] = 0
+    armor_hits['leg'] = 0
+    armor_hits['foot'] = 0
     for line in readf:
         current_line += 1
         try:
@@ -419,15 +467,16 @@ def parse_defense_combat(readf, error_messages):
                 result['Misses'] += 1
             elif MELEE_DEFENSE_DAMAGE_RECEIVED_MESSAGE in line:
                 result['Hits'] += 1
-                damage_and_source = parse_damage_and_source(line)
-                result['MeleeDamage'] += damage_and_source[0]
-                if damage_and_source[1] in sources.keys():
-                    sources[damage_and_source[1]] += damage_and_source[0]
+                damage_source_armor = get_damage_source_and_armor(line, True, False)
+                result['MeleeDamage'] += damage_source_armor[0]
+                if damage_source_armor[1] in sources.keys():
+                    sources[damage_source_armor[1]] += damage_source_armor[0]
                 else:
-                    sources[damage_and_source[1]] = damage_and_source[0]
+                    sources[damage_source_armor[1]] = damage_source_armor[0]
+                armor_hits[damage_source_armor[2]] += 1
             elif MELEE_DEFENSE_OPPONENT_CRIT_MESSAGE in line:
                 result['Crits'] += 1
-                damage_and_source = parse_damage_and_source(line)
+                damage_and_source = get_damage_source_and_armor(line, False, True)
                 result['CritDamage'] += damage_and_source[0]
                 if damage_and_source[1] in sources.keys():
                     sources[damage_and_source[1]] += damage_and_source[0]
@@ -435,7 +484,7 @@ def parse_defense_combat(readf, error_messages):
                     sources[damage_and_source[1]] = damage_and_source[0]
             elif MELEE_DEFENSE_SPELL_PROC_MESSAGE in line:
                 result['SpellsLanded'] += 1
-                damage_and_source = parse_damage_and_source(line)
+                damage_and_source = get_damage_source_and_armor(line, False, False)
                 result['SpellDamage'] += damage_and_source[0]
                 if damage_and_source[1] in sources.keys():
                     sources[damage_and_source[1]] += damage_and_source[0]
@@ -448,6 +497,7 @@ def parse_defense_combat(readf, error_messages):
             continue
 
     result['Sources'] = sorted(sources.items(), key=operator.itemgetter(1), reverse=True)
+    result['ArmorHits'] = sorted(armor_hits.items(), key=operator.itemgetter(1), reverse=True)
 
     result['TotalMeleeAttacks'] = result['Blocks'] + result['Parries'] + result['Evades'] + \
         result['Hits'] + result['Misses']
@@ -533,64 +583,41 @@ def calculate_attack_percents(result, event_list):
 
     return result
 
-def parse_damage_and_source(line):
-    """Helper method that finds the amount of damage and who it was dealt by"""
+def get_damage_source_and_armor(line, is_melee, is_crit):
     split_line = line.split()
-    source = ''
+    if is_crit:
+        source = ' '.join(split_line[1:split_line.index('critical')])
+        damage = int(split_line[split_line.index('additionnal') +1])
+    else:
+        source = ' '.join(split_line[1:split_line.index('hits')])
+        damage = int(split_line[split_line.index('for') +1])
+    armor = ''
+    if is_melee:
+        armor = split_line[split_line.index('your')+1]
 
-    is_name_part = True
-    for word in split_line[1:]:
-        if word == 'hits' or word == 'critical':
-            is_name_part = False
-        elif is_name_part:
-            source += word + ' '
     source = source.replace('The ', '')
 
-    for word in split_line:
-        num = 0
-        try:
-            num = int(word)
-        except ValueError:
-            continue
-        if num > 0:
-            return [num, source]
+    return [damage, source, armor]
 
-    return [num, source]
-
-def parse_damage_and_target(line):
-    """Helper method that finds the amount of damage and who it was dealt to"""
+def get_target_weapon_and_damage(line, is_melee, is_crit):
     split_line = line.split()
+
     target = ''
-
-    is_name_part = False
-    for word in split_line:
-        if word == 'for' or word == 'with':
-            is_name_part = False
-        elif is_name_part:
-            target += word + ' '
-        elif word == 'hit' or word == 'attack':
-            is_name_part = True
-    target = target.replace('the ', '')
-    target = target[0:len(target)-1]
-    if target == '':
-        target = '<Unassigned crits>'
-
-    for word in split_line:
-        num = 0
-        try:
-            num = int(word)
-        except ValueError:
-            continue
-        if num > 0:
-            return [num, target]
-
-    return [num, target]
-
-def get_target_weapon_and_damage(line):
-    split_line = line.split()
-    target = ' '.join(split_line[3:split_line.index('with')])
-    weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])
-    damage = int(split_line[split_line.index('for') +1])
+    weapon = ''
+    damage = 0
+    if is_crit:
+        target = ' '.join(split_line[4:split_line.index('for')])
+        weapon = ''
+        damage = int(split_line[split_line.index('additional') +1])
+    else:
+        if is_melee:
+            target = ' '.join(split_line[3:split_line.index('with')])
+            weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])           
+        else: 
+            target = ' '.join(split_line[3:split_line.index('for')])
+            weapon = ''
+        damage = int(split_line[split_line.index('for') +1])
+    
 
     target = target.replace('the ', '')
     weapon = weapon.replace('the ', '')

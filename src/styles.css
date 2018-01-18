@@ -3,7 +3,7 @@
 table.scrollTable {
     display:block;
     overflow-y: auto;
-    max-height:100px;
+    max-height:160px;
     min-height:20px;
     table-layout:fixed;
     width:100%;

@@ -17,6 +17,7 @@ export class DefenseResults {
         public CritDamage: number,
         public TotalMeleeAttacks: number,
         public TotalSpellAttacks: number,
+        public ArmorHits: string[],
         public Percents: {
             Hits: number,
             Blocks: number,

@@ -29,9 +29,8 @@ export class AppComponent implements OnInit{
     'Pet damage',
     'Style growth rates',
     'Add self-healing to received',
-    'Stats per spell',
     'Unassigned crits',
-    'Calculate all AOE dmg for 1 cast'
+    'Calculate all AOE dmg for 1 cast',
   ]
 
   errorMessageList = []
