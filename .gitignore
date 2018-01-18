@@ -60,3 +60,5 @@ typings/
 __pycache__
 
 tester.py
+
+.pyc
