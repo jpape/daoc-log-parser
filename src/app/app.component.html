@@ -2,9 +2,24 @@
     
     <input type="file" (change)="fileSelected($event)" placeholder="Select log file" accept=".log, .txt">
 
+    <div id="instructions" *ngIf="!resultsForPage">
+        <h2>How to save a chatlog:</h2>
+        <ol>
+            <li>Enable chatlogs in game by using the command '/chatlog'</li>
+            <ul>
+                <li>This causes all text to be output to a file named 'chat.log', which by default is located at 'C:/Documents/Electronic Arts/Dark Age of Camelot</li>
+            </ul>
+            <li>You can write to a differently named file by using '/chatlog [name]'</li>
+            <ul>
+                <li>If the file [name].log exists, the game will open the file and append your chatlog to the end of it.</li>
+                <li>If the file [name].log doesn't exist, the game will create it for you</li>
+            </ul>
+            <li>Quitting, going link-dead, or typing /chatlog again will turn off the logging.</li>
+        </ol>
+    </div>
     
     <div class="container-fluid" *ngIf="resultsForPage">
-        <h1><b>Parse Results</b></h1>        
+        <h1><b>Results</b></h1>        
         <form class="form-group">
             <div class="row">
                 <div class="col-sm-2">
@@ -24,7 +39,7 @@
                             </tr>
                         </table>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-sm-2">
                     <h3 class="panel-heading">Healing</h3>
                         <table>
                             <tr>
@@ -79,18 +94,18 @@
                         </table>
                     <br/>
                     <thead><strong>Deathblow list:</strong></thead>
-                    <table class="scrollTable">
+                    <table class="scrollTable table-striped">
                         <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
                             <td>{{db[0]}}</td>
                             <td>{{db[1] | number}}</td>
                         </tr>
                     </table>
                 </div>
-                <div id="todos" class="col-sm-4 panel-default">
-                    <h3 class="panel-heading">TODO list:</h3>
+                <div id="errors" class="col-sm-4 panel-default">
+                    <h3 class="panel-heading">Errors:</h3>
                     <div class="panel-body">
                         <ul>
-                            <li *ngFor="let todo of todoList">{{todo}}</li>
+                            <li *ngFor="let todo of errorMessageList">{{todo}}</li>
                         </ul>
                     </div>
                 </div>
@@ -132,6 +147,11 @@
                                     <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Misses | percent}}</td>
                                 </tr>
                                 <tr>
+                                    <td><strong>Fumbles:</strong></td>
+                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Fumbles | number}}</td>
+                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Fumbles | percent}}</td>
+                                </tr>
+                                <tr>
                                     <td><strong>Total Attacks:</strong></td>
                                     <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.TotalAttacks | number}}</td>
                                     <td></td>
@@ -158,7 +178,7 @@
                                 </tr>
                             </table>
                             <br/>
-                            <!-- <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length"> -->
+                            <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length">
                                 <thead><strong>Damage Breakdown:</strong></thead>
                                 <table class="table-striped scrollStriped">
                                     <tr>
@@ -178,7 +198,7 @@
                                         <td style="text-align:center">{{dmgTarget[5] | number}}</td>
                                     </tr>
                                 </table>
-                            <!-- </div> -->
+                            </div>
                     </div>
                     <div class="col-sm-3">
                         <h4>Caster Attack</h4>

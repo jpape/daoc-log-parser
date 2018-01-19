@@ -27,10 +27,8 @@ export class AppComponent implements OnInit{
     'Wild healing?',
     'How is kill-count determined?',
     'Pet damage',
-    'Style growth rates',
-    'Add self-healing to received',
+    'Style growth rates / dmg',
     'Unassigned crits',
-    'Calculate all AOE dmg for 1 cast',
   ]
 
   errorMessageList = []
