@@ -97,7 +97,7 @@ exports = module.exports = __webpack_require__("../../../../css-loader/lib/css-b
 
 
 // module
-exports.push([module.i, "/* You can add global styles to this file, and also import other style files */\n\ntable.scrollTable {\n    display:block;\n    overflow-y: auto;\n    max-height:160px;\n    min-height:20px;\n    table-layout:fixed;\n    width:100%;\n    border-collapse:collapse;\n}\n\ntable.scrollTable td {\n    width:100%;\n}\n\ntable {\n    width:100%;\n}\n\ntable.striped {\n    background-color: lightblue;\n}\n\ntable.scrollStriped {\n    background-color: lightgreen;\n}", ""]);
+exports.push([module.i, "/* You can add global styles to this file, and also import other style files */\n\ntable.scrollTable th {\n    width:100%;\n}\n\ntable.scrollTable td {\n    width:100%;\n}\n\ntable {\n    width:100%;\n}\n\ntable.striped {\n    background-color: lightblue;\n}\n\ntable.scrollStriped {\n    background-color: lightgreen;\n}\n\n\n.scrollTable {\n    display: block;\n    overflow-y: auto;\n    max-height:160px;\n    min-height:20px;\n}", ""]);
 
 // exports
 

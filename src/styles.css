@@ -1,13 +1,7 @@
 /* You can add global styles to this file, and also import other style files */
 
-table.scrollTable {
-    display:block;
-    overflow-y: auto;
-    max-height:160px;
-    min-height:20px;
-    table-layout:fixed;
+table.scrollTable th {
     width:100%;
-    border-collapse:collapse;
 }
 
 table.scrollTable td {
@@ -24,4 +18,12 @@ table.striped {
 
 table.scrollStriped {
     background-color: lightgreen;
+}
+
+
+.scrollTable {
+    display: block;
+    overflow-y: auto;
+    max-height:160px;
+    min-height:20px;
 }
