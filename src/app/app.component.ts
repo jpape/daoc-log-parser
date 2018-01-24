@@ -73,4 +73,16 @@ export class AppComponent implements OnInit{
     }
     return result_text
   }
+
+  checkIfNameIsPlayer(name) {
+    if (name.indexOf(' ') > -1) {
+      return false;
+    }
+
+    if (name[0] != name[0].toUpperCase()) {
+      return false;
+    }
+
+    return true;
+  }
 }

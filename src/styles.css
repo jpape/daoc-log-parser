@@ -27,3 +27,7 @@ table.scrollStriped {
     max-height:160px;
     min-height:20px;
 }
+
+a {
+    font-size:6pt;
+}

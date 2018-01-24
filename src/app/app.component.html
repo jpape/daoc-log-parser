@@ -1,5 +1,5 @@
 <div style="padding-left:4ch; padding-top: 4ch">
-    
+
     <input type="file" (change)="fileSelected($event)" placeholder="Select log file" accept=".log, .txt">
 
     <div id="instructions" *ngIf="!resultsForPage">
@@ -7,7 +7,8 @@
         <ol>
             <li>Enable chatlogs in game by using the command '/chatlog'</li>
             <ul>
-                <li>This causes all text to be output to a file named 'chat.log', which by default is located at 'C:/Documents/Electronic Arts/Dark Age of Camelot</li>
+                <li>This causes all text to be output to a file named 'chat.log', which by default is located at 'C:/Documents/Electronic
+                    Arts/Dark Age of Camelot</li>
             </ul>
             <li>You can write to a differently named file by using '/chatlog [name]'</li>
             <ul>
@@ -17,408 +18,659 @@
             <li>Quitting, going link-dead, or typing /chatlog again will turn off the logging.</li>
         </ol>
     </div>
-    
+
     <div class="container-fluid" *ngIf="resultsForPage">
-        <h1><b>Results</b></h1>        
-        <form class="form-group">
-            <div class="row">
-                <div class="col-sm-2">
-                    <h3 class="panel-heading">Money</h3>
-                        <table style="width: 100%">
-                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Loot) != ''">
-                                <td><strong>Looted:</strong></td>
-                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Loot)}}</td>
-                            </tr>
-                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Expense) != ''">
-                                <td><strong>Expenses:</strong></td>
-                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Expense)}}</td>
-                            </tr>
-                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Income) != ''">
-                                <td><strong>Income:</strong></td>
-                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Income)}}</td>
-                            </tr>
-                        </table>
-                </div>
-                <div class="col-sm-2">
-                    <h3 class="panel-heading">Healing</h3>
-                        <table>
+        <div class="panel-group">
+            <div class="row panel-default panel" id="healing-money-summary">
+                <h3 class="panel-heading">Summary</h3>
+                <div class="panel-body">
+                    <div class="col-sm-2" id="healing-summary">
+                        <h4>Healing</h4>
+                        <table style="border-top:1px solid black;">
                             <tr>
-                                <td><strong>Delivered:</strong></td>
+                                <td>
+                                    <strong>Delivered:</strong>
+                                </td>
                                 <td style="text-align: right">{{resultsForPage.Healing.Delivered | number}}</td>
                             </tr>
                             <tr>
-                                <td><strong>Received:</strong></td>
+                                <td>
+                                    <strong>Received:</strong>
+                                </td>
                                 <td style="text-align: right">{{resultsForPage.Healing.Received | number}}</td>
                             </tr>
                             <tr *ngIf="resultsForPage.Healing.Lifetapped">
-                                <td><strong>Lifetapped:</strong></td>
+                                <td>
+                                    <strong>Lifetapped:</strong>
+                                </td>
                                 <td style="text-align: right">{{resultsForPage.Healing.Lifetapped | number}}</td>
                             </tr>
                         </table>
                         <br/>
                         <div *ngIf="resultsForPage.Healing.Targets.length">
-                            <thead><strong>Delivered breakdown:</strong></thead>
+                            <thead>
+                                <strong>Delivered breakdown:</strong>
+                            </thead>
                             <div class="scrollTable">
                                 <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Count</th>
+                                        <th style="text-align:center">Total</th>
+                                        <th style="text-align:right">Max</th>
+                                    </tr>
                                     <tr *ngFor="let target of resultsForPage.Healing.Targets">
-                                        <td>{{target[0]}}</td>
-                                        <td style="text-align:right">{{target[1] | number}}</td>
+                                        <td>
+                                            {{target[0]}}
+                                            <a *ngIf="checkIfNameIsPlayer(target[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{target[0]}}" target="_blank"> (herald)</a>
+                                        </td>
+                                        <td style="text-align:center">{{target[1] | number}}</td>
+                                        <td style="text-align:center">{{target[2] | number}}</td>
+                                        <td style="text-align:right">{{target[3] | number}}</td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
                         <br/>
                         <div *ngIf="resultsForPage.Healing.Sources.length">
-                            <thead><strong>Received breakdown:</strong></thead>
+                            <thead>
+                                <strong>Received breakdown:</strong>
+                            </thead>
                             <div class="scrollTable">
                                 <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Count</th>
+                                        <th style="text-align:center">Total</th>
+                                        <th style="text-align:right">Max</th>
+                                    </tr>
                                     <tr *ngFor="let source of resultsForPage.Healing.Sources">
-                                        <td>{{source[0]}}</td>
-                                        <td style="text-align:right">{{source[1] | number}}</td>
+                                        <td>
+                                            {{source[0]}}
+                                            <a *ngIf="checkIfNameIsPlayer(source[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{source[0]}}" target="_blank"> (herald)</a>
+                                        </td>
+                                        <td style="text-align:center">{{source[1] | number}}</td>
+                                        <td style="text-align:center">{{source[2] | number}}</td>
+                                        <td style="text-align:right">{{source[3] | number}}</td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
-                </div>
-                <div class="col-sm-2">
-                    <h3 class="panel-heading">Summary</h3>
-                        <table>
+                    </div>
+                    <div class="col-sm-2" id="rvr-summary">
+                        <h4>RvR</h4>
+                        <table style="border-top:1px solid black;">
                             <tr>
-                                <td><strong>Deaths:</strong></td>
+                                <td>
+                                    <strong>Deaths:</strong>
+                                </td>
                                 <td style="text-align:right">{{resultsForPage.Combat.Summary.Deaths | number}}</td>
                             </tr>
                             <tr>
-                                <td><strong>RPs:</strong></td>
+                                <td>
+                                    <strong>RPs:</strong>
+                                </td>
                                 <td style="text-align:right">{{resultsForPage.Combat.Summary.RPs | number}}</td>
                             </tr>
                             <tr>
-                                <td><strong>Deathblows:</strong></td>
+                                <td>
+                                    <strong>Deathblows:</strong>
+                                </td>
                                 <td style="text-align:right">{{resultsForPage.Combat.Summary.DeathblowCount | number}}</td>
                             </tr>
                         </table>
-                    <br/>
-                    <thead><strong>Deathblow list:</strong></thead>
-                    <div class="scrollTable">
-                        <table class="table-striped">
-                            <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
-                                <td>{{db[0]}}</td>
-                                <td>{{db[1] | number}}</td>
+                        <br/>
+                        <thead>
+                            <strong>Deathblow list:</strong>
+                        </thead>
+                        <div class="scrollTable" id="deathblow-list" style="max-height:140px">
+                            <table class="table-striped scrollStriped">
+                                <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
+                                    <td>
+                                        {{db[0]}}
+                                        <a *ngIf="checkIfNameIsPlayer(db[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{db[0]}}" target="_blank"> (herald)</a>
+                                    </td>
+                                    <td style="text-align:right">{{db[1] | number}}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-sm-2" id="money-summary">
+                        <h4>Money</h4>
+                        <table style="border-top:1px solid black;">
+                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Loot) != ''">
+                                <td>
+                                    <strong>Looted:</strong>
+                                </td>
+                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Loot)}}</td>
+                            </tr>
+                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Expense) != ''">
+                                <td>
+                                    <strong>Expenses:</strong>
+                                </td>
+                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Expense)}}</td>
+                            </tr>
+                            <tr *ngIf="currencyPrintHelper(resultsForPage.Cash.Income) != ''">
+                                <td>
+                                    <strong>Income:</strong>
+                                </td>
+                                <td style="text-align: right">{{currencyPrintHelper(resultsForPage.Cash.Income)}}</td>
                             </tr>
                         </table>
                     </div>
-                </div>
-                <div id="errors" class="col-sm-4 panel-default">
-                    <h3 class="panel-heading">Errors:</h3>
-                    <div class="panel-body">
-                        <ul>
-                            <li *ngFor="let todo of errorMessageList">{{todo}}</li>
-                        </ul>
+                    <div id="errors" class="col-sm-4 panel-default" style="max-height:250px; overflow-y:auto">
+                        <h3>Errors:</h3>
+                        <div class="panel-body">
+                            <ul>
+                                <li *ngFor="let todo of errorMessageList">{{todo}}</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <h3>Combat</h3>
-                <div class="panel-default panel">
-                    <div class="col-sm-3">
-                        <h4>Melee Attack</h4>
-                            <table class="table-striped striped">
+            <div class="row panel-default panel" id="melee-attack">
+                <h3 class="panel-heading">Melee Attack</h3>
+                <div class="panel-body">
+                    <div class="col-sm-2" id="melee-summary">
+                        <h4>
+                            <strong>Summary:</strong>
+                        </h4>
+                        <table class="table-striped striped">
+                            <tr>
+                                <td></td>
+                                <th style="text-align:right">Count</th>
+                                <th style="text-align:right">Percent</th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Hit:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Hits | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Hits | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Blocked:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Blocks | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Blocks | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Parried:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Parries | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Parries | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Evaded:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Evades | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Evades | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Missed:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Misses | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Misses | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Bladeturned:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Bladeturns | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Fumbled:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Fumbles | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Fumbles | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Total Attacks:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.TotalAttacks | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Base Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.BaseDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Dmg Absorbed:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Absorbed | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crits:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Crits | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Crits | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crit Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.CritDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Total Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.TotalDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-sm-4" id="melee-target-breakdown">
+                        <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length">
+                            <h4>
+                                <strong>Targets:</strong>
+                            </h4>
+                            <div class="scrollTable" style="max-height:280px">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Hits</th>
+                                        <th style="text-align:center">Blocks</th>
+                                        <th style="text-align:center">Parries</th>
+                                        <th style="text-align:center">Evades</th>
+                                        <th style="text-align:right">Dmg</th>
+                                    </tr>
+                                    <tr *ngFor="let dmgTarget of resultsForPage.Combat.MeleeAttack.Targets">
+                                        <td>
+                                            {{dmgTarget[0]}}
+                                            <a *ngIf="checkIfNameIsPlayer(dmgTarget[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{dmgTarget[0]}}" target="_blank"> (herald)</a>
+                                        </td>
+                                        <td style="text-align:center">{{dmgTarget[1] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[2] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[3] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[4] | number}}</td>
+                                        <td style="text-align:right">{{dmgTarget[5] | number}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" id="melee-style-weapon-stats">
+                        <div id="melee-style-stats">
+                            <h4>
+                                <strong>Style Stats:</strong>
+                            </h4>
+                            <table class="table-striped scrollStriped">
                                 <tr>
-                                    <td></td>
-                                    <th style="text-align:right">Count</th>
-                                    <th style="text-align:right">Percent</th>
+                                    <th></th>
+                                    <th style="text-align:center">Count</th>
+                                    <th style="text-align:center">Avg GR</th>
+                                    <th style="text-align:center">Total Dmg</th>
+                                    <th style="text-align:center">Min</th>
+                                    <th style="text-align:right">Max</th>
+                                    <th style="text-align:center">Avg</th>
                                 </tr>
-                                <tr>
-                                    <td><strong>Hits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Hits | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Hits | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Blocks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Blocks | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Blocks | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Parries:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Parries | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Parries | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Evades:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Evades | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Evades | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Misses:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Misses | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Misses | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Fumbles:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Fumbles | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Fumbles | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Total Attacks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.TotalAttacks | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Base Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.BaseDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Crits | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.Percents.Crits | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crit Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.CritDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Total Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.MeleeAttack.TotalDamage | number}}</td>
-                                    <td></td>
+                                <tr *ngFor="let style of resultsForPage.Combat.MeleeAttack.StyleStats">
+                                    <td>{{style[0]}}</td>
+                                    <td style="text-align:center">{{style[1] | number}}</td>
+                                    <td style="text-align:center">{{style[2] | number}}</td>
+                                    <td style="text-align:center">{{style[3] | number}}</td>
+                                    <td style="text-align:center">{{style[4] | number}}</td>
+                                    <td style="text-align:right">{{style[5] | number}}</td>
+                                    <td style="text-align:center">{{style[3]/style[1] | number:'.0-0'}}</td>
                                 </tr>
                             </table>
-                            <br/>
-                            <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length">
-                                <thead><strong>Damage Breakdown:</strong></thead>
-                                <div class="scrollTable">
-                                    <table class="table-striped scrollStriped">
-                                        <tr>
-                                            <th></th>
-                                            <th style="text-align:center">Hits</th>
-                                            <th style="text-align:center">Blocks</th>
-                                            <th style="text-align:center">Parries</th>
-                                            <th style="text-align:center">Evades</th>
-                                            <th style="text-align:right">Dmg</th>
-                                        </tr>
-                                        <tr *ngFor="let dmgTarget of resultsForPage.Combat.MeleeAttack.Targets">
-                                            <td>{{dmgTarget[0]}}</td>
-                                            <td style="text-align:center">{{dmgTarget[1] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[2] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[3] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[4] | number}}</td>
-                                            <td style="text-align:right">{{dmgTarget[5] | number}}</td>
-                                        </tr>
-                                    </table>
-                                </div>
+                        </div>
+                        <br/>
+                        <br/>
+                        <div id="melee-weapon-stats">
+                            <h4>
+                                <strong>Weapon Stats:</strong>
+                            </h4>
+                            <div class="scrollTable">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Count</th>
+                                        <th style="text-align:center">Dmg</th>
+                                        <th style="text-align:center">Min</th>
+                                        <th style="text-align:center">Max</th>
+                                        <th style="text-align:right">Avg</th>
+                                    </tr>
+                                    <tr *ngFor="let style of resultsForPage.Combat.MeleeAttack.WeaponStats">
+                                        <td>{{style[0]}}</td>
+                                        <td style="text-align:center">{{style[1] | number}}</td>
+                                        <td style="text-align:center">{{style[2] | number}}</td>
+                                        <td style="text-align:center">{{style[3] | number}}</td>
+                                        <td style="text-align:center">{{style[4] | number}}</td>
+                                        <td style="text-align:right">{{style[2]/style[1] | number:'.0-0'}}</td>
+                                    </tr>
+                                </table>
                             </div>
+                        </div>
                     </div>
-                    <div class="col-sm-3">
-                        <h4>Caster Attack</h4>
+                </div>
+            </div>
+            <div class="row panel panel-default" id="caster-attack">
+                <h3 class="panel-heading">Caster Attack</h3>
+                <div class="panel-body">
+                    <div class="col-sm-2" id="caster-summary">
+                        <h4>
+                            <strong>Summary:</strong>
+                        </h4>
+                        <table class="table-striped striped">
+                            <tr>
+                                <th></th>
+                                <th style="text-align:right">
+                                    <strong>Count</strong>
+                                </th>
+                                <th style="text-align:right">
+                                    <strong>Percent</strong>
+                                </th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Hits:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Landed | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Landed | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Resists:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Resists | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Resists | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>TotalAttacks:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.TotalAttacks | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Base Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.BaseDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crits:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Crits | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Crits | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crit Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.CritDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Total Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.TotalDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-sm-4" id="caster-damage-breakdown">
+                        <div *ngIf="resultsForPage.Combat.CasterAttack.Targets.length">
+                            <h4>
+                                <strong>Targets:</strong>
+                            </h4>
+                            <div class="scrollTable">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Casted</th>
+                                        <th style="text-align:center">Landed</th>
+                                        <th style="text-align:center">Resisted</th>
+                                        <th style="text-align:center">Crits</th>
+                                        <th style="text-align:right">Total Dmg</th>
+                                    </tr>
+                                    <tr *ngFor="let dmgTarget of resultsForPage.Combat.CasterAttack.Targets">
+                                        
+                                        <td>
+                                            {{dmgTarget[0]}}
+                                            <a *ngIf="checkIfNameIsPlayer(dmgTarget[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{dmgTarget[0]}}" target="_blank"> (herald)</a>
+                                        </td>
+                                        <td style="text-align:center">{{dmgTarget[1] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[2] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[3] | number}}</td>
+                                        <td style="text-align:center">{{dmgTarget[4] | number}}</td>
+                                        <td style="text-align:right">{{dmgTarget[5] | number}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" id="caster-spell-stats">
+                        <div *ngIf="resultsForPage.Combat.CasterAttack.SpellStats">
+                            <h4>
+                                <strong>Spell Stats:</strong>
+                            </h4>
+                            <div class="scrollTable" style="max-height:160px">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Casted</th>
+                                        <th style="text-align:center">Landed</th>
+                                        <th style="text-align:center">Resisted</th>
+                                        <th style="text-align:center">Crits</th>
+                                        <th style="text-align:right">Total Dmg</th>
+                                    </tr>
+                                    <tr *ngFor="let spell of resultsForPage.Combat.CasterAttack.SpellStats">
+                                        <td>{{spell[0]}}</td>
+                                        <td style="text-align:center">{{spell[1] | number}}</td>
+                                        <td style="text-align:center">{{spell[2] | number}}</td>
+                                        <td style="text-align:center">{{spell[3] | number}}</td>
+                                        <td style="text-align:center">{{spell[4] | number}}</td>
+                                        <td style="text-align:right">{{spell[5] | number}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row panel panel-default" id="defense">
+                <h3 class="panel-heading">Defense</h3>
+                <div class="panel-body">
+                    <div class="col-sm-2" id="defense-summary">
+                        <h4>
+                            <strong>Summary:</strong>
+                        </h4>
+                        <table class="table-striped striped">
+                            <tr>
+                                <th></th>
+                                <th style="text-align: right">
+                                    <strong>Count</strong>
+                                </th>
+                                <th style="text-align: right">
+                                    <strong>Percent</strong>
+                                </th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Hits:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Hits | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Hits | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Blocks:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Blocks | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Blocks | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Parries:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Parries | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Parries | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Evades:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Evades | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Evades | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Misses:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Misses | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Misses | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Tot Melee Attacks:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalMeleeAttacks | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crits:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Crits | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Crit Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.CritDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Melee Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.MeleeDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Dmg Absorbed:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Absorbed | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Spells/Procs:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.SpellsLanded | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.SpellsLanded | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Resists:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Resists | number}}</td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Resists | percent}}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Tot Magic Attacks:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalSpellAttacks | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Spell Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.SpellDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Total Dmg:</strong>
+                                </td>
+                                <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalDamage | number}}</td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-sm-5" id="defense-damage-breakdown">
+                        <div *ngIf="resultsForPage.Combat.Defense.Sources.length">
+                            <h4>
+                                <strong>Damage Sources:</strong>
+                            </h4>
+                            <div class="scrollTable" style="max-height:320px">
+                                <table class="table-striped scrollStriped">
+                                    <tr>
+                                        <th></th>
+                                        <th style="text-align:center">Attacks</th>
+                                        <th style="text-align:center">Hits</th>
+                                        <th style="text-align:center">Blocks</th>
+                                        <th style="text-align:center">Parries</th>
+                                        <th style="text-align:center">Evades</th>
+                                        <th style="text-align:center">Misses</th>
+                                        <th style="text-align:center">Crits</th>
+                                        <th style="text-align:right">Damage</th>
+                                    </tr>
+                                    <tr *ngFor="let dmgSource of resultsForPage.Combat.Defense.Sources">
+                                        <td>
+                                            {{dmgSource[0]}}
+                                            <a *ngIf="checkIfNameIsPlayer(dmgSource[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{dmgSource[0]}}" target="_blank"> (herald)</a>
+                                        </td>
+                                        <td style="text-align:center">{{dmgSource[1] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[2] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[3] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[4] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[5] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[6] | number}}</td>
+                                        <td style="text-align:center">{{dmgSource[7] | number}}</td>
+                                        <td style="text-align:right">{{dmgSource[8] | number}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-2" id="defense-armor-hits">
+                        <div *ngIf="resultsForPage.Combat.Defense.Hits > 0">
+                            <h4>
+                                <strong>Armor Hits:</strong>
+                            </h4>
                             <table class="table-striped striped">
                                 <tr>
                                     <th></th>
-                                    <th style="text-align:right"><strong>Count</strong></th>
-                                    <th style="text-align:right"><strong>Percent</strong></th>
-                                </tr>
-                                <tr>
-                                    <td><strong>Hits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Landed | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Landed | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Resists:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Resists | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Resists | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>TotalAttacks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.TotalAttacks | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Base Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.BaseDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Crits | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.Percents.Crits | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crit Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.CritDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Total Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.CasterAttack.TotalDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                            </table>
-                            <br/>
-                            <div *ngIf="resultsForPage.Combat.CasterAttack.Targets.length">
-                                <thead><strong>Damage Breakdown:</strong></thead>
-                                <div class="scrollTable">
-                                    <table class="table-striped scrollStriped">
-                                        <tr>
-                                            <th style="text-align:left"></th>
-                                            <th style="text-align:center">Casted</th>
-                                            <th style="text-align:center">Landed</th>
-                                            <th style="text-align:center">Resisted</th>
-                                            <th style="text-align:center">Crits</th>
-                                            <th style="text-align:right">Total Dmg</th>
-                                        </tr>
-                                        <tr *ngFor="let dmgTarget of resultsForPage.Combat.CasterAttack.Targets">
-                                            <td style="text-align:left">{{dmgTarget[0]}}</td>
-                                            <td style="text-align:center">{{dmgTarget[1] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[2] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[3] | number}}</td>
-                                            <td style="text-align:center">{{dmgTarget[4] | number}}</td>
-                                            <td style="text-align:right">{{dmgTarget[5] | number}}</td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </div>
-                            <div *ngIf="resultsForPage.Combat.CasterAttack.SpellStats">
-                                <br/>
-                                <thead><strong>Spell Breakdown:</strong></thead>
-                                <div class="scrollTable">
-                                    <table class="table-striped scrollStriped">
-                                        <tr>
-                                            <th></th>
-                                            <th style="text-align:center">Casted</th>
-                                            <th style="text-align:center">Landed</th>
-                                            <th style="text-align:center">Resisted</th>
-                                            <th style="text-align:center">Crits</th>
-                                            <th style="text-align:center">Total Dmg</th>
-                                        </tr>
-                                        <tr *ngFor="let spell of resultsForPage.Combat.CasterAttack.SpellStats">
-                                            <td>{{spell[0]}}</td>
-                                            <td style="text-align:center">{{spell[1] | number}}</td>
-                                            <td style="text-align:center">{{spell[2] | number}}</td>
-                                            <td style="text-align:center">{{spell[3] | number}}</td>
-                                            <td style="text-align:center">{{spell[4] | number}}</td>
-                                            <td style="text-align:center">{{spell[5] | number}}</td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </div>
-                    </div>
-                    <div class="col-sm-2">
-                        <h4>Defense</h4>
-                            <table class="table-striped striped">
-                                <tr>
-                                    <th></th>
-                                    <th style="text-align: right"><strong>Count</strong></th>
-                                    <th style="text-align: right"><strong>Percent</strong></th>
-                                </tr>
-                                <tr>
-                                    <td><strong>Hits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Hits | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Hits | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Blocks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Blocks | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Blocks | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Parries:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Parries | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Parries | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Evades:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Evades | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Evades | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Misses:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Misses | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Misses | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tot Melee Attacks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalMeleeAttacks | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crits:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Crits | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Crit Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.CritDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Melee Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.MeleeDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Dmg Absorbed:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Absorbed | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Spells/Procs:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.SpellsLanded | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.SpellsLanded | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Resists:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Resists | number}}</td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.Percents.Resists | percent}}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tot Magic Attacks:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalSpellAttacks | number}}</td>
-                                    <td></td>
-                                </tr>    
-                                <tr>
-                                    <td><strong>Spell Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.SpellDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Total Dmg:</strong></td>
-                                    <td style="text-align:right">{{resultsForPage.Combat.Defense.TotalDamage | number}}</td>
-                                    <td></td>
-                                </tr>
-                            </table>
-                            <br/>
-                            <div *ngIf="resultsForPage.Combat.Defense.Sources.length">
-                                <thead><strong>Damage Breakdown:</strong></thead>
-                                <div class="scrollTable">
-                                    <table class="table-striped scrollStriped">
-                                        <tr>
-                                            <th></th>
-                                            <th></th>
-                                        </tr>
-                                        <tr *ngFor="let dmgSource of resultsForPage.Combat.Defense.Sources">
-                                            <td>{{dmgSource[0]}}</td>
-                                            <td style="text-align: right">{{dmgSource[1] | number}}</td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </div>
-                    </div>
-                    <div class="col-sm-2" *ngIf="resultsForPage.Combat.Defense.Hits > 0">
-                        <h4>Armor Hits</h4>
-                            <table class="table-striped striped">
-                                <tr>
-                                    <th>Armor</th>
                                     <th style="text-align: right">Hits</th>
                                     <th style="text-align: right">Percent</th>
+                                    <th style="text-align: right">Damage</th>
                                 </tr>
                                 <tr *ngFor="let armor of resultsForPage.Combat.Defense.ArmorHits">
                                     <td>{{armor[0]}}</td>
                                     <td style="text-align: right">{{armor[1] | number}}</td>
                                     <td style="text-align: right">{{(armor[1]/resultsForPage.Combat.Defense.Hits) | percent:'.0-2'}}</td>
+                                    <td style="text-align: right">{{armor[2] | number}}</td>
                                 </tr>
                             </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>

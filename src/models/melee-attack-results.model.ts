@@ -11,7 +11,9 @@ export class MeleeAttackResults {
         public Misses: number,
         public Fumbles: number,
         public CritDamage: number,
-        public Targets: string[][],
+        public Targets: string[],
+        public StyleStats: string[],
+        public WeaponStats: string[],
         public Percents: {
             Hits: number,
             Blocks: number,
