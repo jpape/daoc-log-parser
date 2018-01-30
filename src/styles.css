@@ -12,11 +12,11 @@ table {
     width:100%;
 }
 
-table.striped {
+table.blueStriped {
     background-color: lightblue;
 }
 
-table.scrollStriped {
+table.greenStriped {
     background-color: lightgreen;
 }
 

@@ -49,8 +49,10 @@ CRITICAL_HIT_SPELL_MESSAGE = 'You critical hit for'
 
 MELEE_STYLE_MESSAGE = 'You perform your'
 # [22:00:40] You perform your Doublefrost perfectly! (+108)
-# [22:00:40] You attack Sannik with your shimmering Cleaving arcanium spiked hammer and hit for 215 (-75) damage!
-# [22:00:42] You attack Sannik with your shimmering Cleaving arcanium weighted bearded ax and hit for 72 (-27) damage!
+# [22:00:40] You attack Sannik with your shimmering Cleaving arcanium \
+#   spiked hammer and hit for 215 (-75) damage!
+# [22:00:42] You attack Sannik with your shimmering Cleaving arcanium \
+#   weighted bearded ax and hit for 72 (-27) damage!
 
 MELEE_OFFENSE_ATTACK_BLADE_TURN_MISS_MESSAGE = 'Your strike was absorbed by a magical barrier!'
 # [22:36:08] Your strike was absorbed by a magical barrier!
@@ -128,7 +130,7 @@ def parse_cash_flow(readf, error_messages):
                 money_spent = parse_money_denomination(line)
             elif GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line:
                 money_looted += parse_money_denomination(line)
-        except Exception as err:
+        except IndexError as err:
             error_messages.append('TM (line {0}): {1}'.format(current_line, err))
             continue
     result['Income'] = currency_breakdown(money_gained)
@@ -168,20 +170,246 @@ def currency_breakdown(total):
 def parse_combat(readf, error_messages):
     """Parses attack and defense values"""
     combat = {}
-    combat['MeleeAttack'] = parse_melee_attack(readf, error_messages)
-    combat['CasterAttack'] = parse_caster_attack(readf, error_messages)
+
+    timestamp_dict = {}
+    readf.seek(0)
+    for line in readf:
+        if line.split():
+            if line.split()[0] not in timestamp_dict.keys():
+                timestamp_dict[line.split()[0]] = []
+
+            timestamp_dict[line.split()[0]].append(line)
+
+    melee_events = []
+    spell_events = []
+    for event_list in timestamp_dict.values():
+        event_type = check_timestamp_event_type(event_list)
+        if event_type == 'melee':
+            mel_events, sp_events = parse_melee_attack(event_list, error_messages, True)
+            melee_events.extend(mel_events)
+            if sp_events is not None:
+                spell_events.extend(sp_events)
+        if event_type == 'spell':
+            sp_events, mel_events = parse_caster_attack(event_list, error_messages, True)
+            spell_events.extend(sp_events)
+            if mel_events is not None:
+                melee_events.extend(mel_events)
+
+    combat['MeleeAttack'] = aggregate_melee_events(melee_events)
+    combat['CasterAttack'] = aggregate_spell_events(spell_events)
     combat['Defense'] = parse_defense_combat(readf, error_messages)
     combat['Summary'] = parse_combat_summary(readf, error_messages)
 
     return combat
 
-def parse_melee_attack(readf, error_messages):
+def check_timestamp_event_type(event_list):
+    """For the given event_list, determine whether melee
+    or spell offensive actions take place"""
+    for line in event_list:
+        if 'You perform' in line \
+        or 'You attack ' in line \
+        or 'You miss' in line \
+        or 'You fumble' in line \
+        or 'evades your attack' in line:
+            return 'melee'
+        elif 'you cast' in line \
+        or 'You hit' in line \
+        or 'resists the effect' in line:
+            return 'spell'
+
+    return 'no-op'
+
+def parse_melee_attack(events, error_messages, should_recurse):
     """Counts and returns the # of successful attacks with both hands"""
-    readf.seek(0)
-    current_line = 0
+    is_bladeturned = False
+    contains_spell_event = False
+
+    mel_events = []
+
+    non_local = Nonlocal()
+    non_local.mel_event = None
+    event_timestamp = events[0].split()[0]
+
+    for line in events:
+        if MELEE_STYLE_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            non_local.mel_event = MeleeEvent()
+            non_local.mel_event.timestamp = event_timestamp
+
+            split_line = line.split()
+            style = ' '.join(split_line[4:split_line.index('perfectly!')])
+            growth_rate = split_line[len(split_line)-1]
+            growth_rate_int = int(growth_rate[2:growth_rate.index(')')])
+
+            non_local.mel_event.style = style
+            non_local.mel_event.growth_rate = growth_rate_int
+
+        elif MELEE_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE in line:
+            targ_weap_dmg = get_target_weapon_and_damage(line, True, False)
+
+            if non_local.mel_event is not None:
+                if non_local.mel_event.damage > 0:
+                    mel_events.append(non_local.mel_event)
+                    non_local.mel_event = MeleeEvent()
+                    non_local.mel_event.timestamp = event_timestamp
+                    non_local.mel_event.style = '-unstyled-'
+
+            else:
+                non_local.mel_event = MeleeEvent()
+                non_local.mel_event.timestamp = event_timestamp
+                non_local.mel_event.style = '-unstyled-'
+
+
+            non_local.mel_event.target = targ_weap_dmg[0]
+            non_local.mel_event.weapon = targ_weap_dmg[1]
+            non_local.mel_event.damage = targ_weap_dmg[2]
+
+        elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
+            if line.split()[4] != 'for':
+                if non_local.mel_event is None:
+                    # error_messages.append('Critical hit without base damage')
+                    continue
+
+                targ_weap_dmg = get_target_weapon_and_damage(line, True, True)
+                non_local.mel_event.crit = targ_weap_dmg[2]
+
+        elif CASTER_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_DMG_ADD_MESSAGE not in line:
+            if non_local.mel_event is None:
+                contains_spell_event = True
+                continue
+
+            targ_weap_dmg = get_target_weapon_and_damage(line, False, False)
+            non_local.mel_event.proc = targ_weap_dmg[2]
+
+        elif MELEE_OFFENSE_DMG_ADD_MESSAGE in line:
+            if non_local.mel_event is None:
+                # error_messages.append('Damage add without base damage')
+                continue
+
+            targ_weap_dmg = get_target_weapon_and_damage(line, False, False)
+            non_local.mel_event.damage_add += targ_weap_dmg[2]
+
+        elif MELEE_OFFENSE_ATTACK_ABSORB_MESSAGE in line:
+            if non_local.mel_event is None:
+                # error_messages.append('Dmg absorb without target')
+                continue
+
+            non_local.mel_event.absorb = int(line.split()[4])
+
+        elif MELEE_OFFENSE_ATTACK_EVADE_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            target = get_attack_non_hit_target(line, 'evades')
+            non_local.mel_event = MeleeEvent()
+            non_local.mel_event.timestamp = event_timestamp
+            non_local.mel_event.target = target
+            non_local.mel_event.evade = 1
+
+            mel_events.append(non_local.mel_event)
+            non_local.mel_event = None
+
+        elif MELEE_OFFENSE_ATTACK_PARRY_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            target = get_attack_non_hit_target(line, 'parries')
+            non_local.mel_event = MeleeEvent()
+            non_local.mel_event.timestamp = event_timestamp
+            non_local.mel_event.target = target
+            non_local.mel_event.parry = 1
+
+            mel_events.append(non_local.mel_event)
+            non_local.mel_event = None
+
+        elif MELEE_OFFENSE_ATTACK_BLOCK_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            target = get_attack_non_hit_target(line, 'blocks')
+            non_local.mel_event = MeleeEvent()
+            non_local.mel_event.timestamp = event_timestamp
+            non_local.mel_event.target = target
+            non_local.mel_event.block = 1
+
+            mel_events.append(non_local.mel_event)
+            non_local.mel_event = None
+
+        elif MELEE_OFFENSE_ATTACK_FUMBLE_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            fum_event = MeleeEvent()
+            fum_event.timestamp = event_timestamp
+            fum_event.fumble = 1
+            mel_events.append(fum_event)
+
+            non_local.mel_event = None
+
+        elif MELEE_OFFENSE_ATTACK_MISS_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            if not is_bladeturned:
+                miss_event = MeleeEvent()
+                miss_event.timestamp = event_timestamp
+                miss_event.miss = 1
+                mel_events.append(miss_event)
+
+            is_bladeturned = False
+            non_local.mel_event = None
+
+        elif MELEE_OFFENSE_ATTACK_BLADE_TURN_MISS_MESSAGE in line:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+
+            non_local.mel_event = None
+
+            bt_event = MeleeEvent()
+            bt_event.timestamp = event_timestamp
+            bt_event.bladeturn = 1
+            mel_events.append(bt_event)
+
+            is_bladeturned = True
+
+        elif 'A crystal shield covers' in line:
+            continue
+
+        elif 'no longer hidden' in line:
+            if non_local.mel_event is not None:
+                if non_local.mel_event.style != '' \
+                    and non_local.mel_event.damage == 0:
+                    continue
+
+        else:
+            if non_local.mel_event is not None:
+                mel_events.append(non_local.mel_event)
+            non_local.mel_event = None
+
+    if non_local.mel_event is not None:
+        mel_events.append(non_local.mel_event)
+
+    if contains_spell_event and should_recurse:
+        spell_events = parse_caster_attack(events, error_messages, False)[0]
+    else:
+        spell_events = None
+
+    return mel_events, spell_events
+
+def aggregate_melee_events(events_list):
+    """Aggregates melee events into groups for responses"""
+    targets = {}
+    weapons = {}
+    styles = {}
+    timestamps = {}
+
     result = {}
     result['Hits'] = 0
     result['BaseDamage'] = 0
+    result['Procs'] = 0
+    result['ProcDamage'] = 0
     result['Crits'] = 0
     result['CritDamage'] = 0
     result['Evades'] = 0
@@ -192,125 +420,83 @@ def parse_melee_attack(readf, error_messages):
     result['Bladeturns'] = 0
     result['Absorbed'] = 0
 
-    is_bladeturned = False
+    for event in events_list:
+        # Targets
+        if event.target != '':
+            if event.target not in targets.keys():
+                targets[event.target] = MeleeTarget()
+            targets[event.target].add_melee_event(event)
 
-    targets = {}
+        # Weapons
+        if event.weapon != '':
+            if event.weapon not in weapons.keys():
+                weapons[event.weapon] = WeaponStats()
+            weapons[event.weapon].add_melee_event(event)
 
-    weapon_stats = {}
-    style_stats = {}
-    style_stats['-unstyled-'] = StyleStats()
+        # Styles
+        if event.block == event.parry == event.evade == \
+             event.miss == event.fumble == event.bladeturn == 0:
+            if event.style == '':
+                event.style = '-unstyled-'
+            if event.style not in styles.keys():
+                styles[event.style] = StyleStats()
+            styles[event.style].add_melee_event(event)
 
-    style = ''
-    for line in readf:
-        current_line += 1
-        try:
-            if CHAT_MESSAGE_INDICATOR in line:
-                continue
-            elif MELEE_STYLE_MESSAGE in line:
-                split_line = line.split()
-                style = ' '.join(split_line[4:split_line.index('perfectly!')])
-                growth_rate = split_line[len(split_line)-1]
-                growth_rate_int = int(growth_rate[2:growth_rate.index(')')])
 
-                if style not in style_stats.keys():
-                    style_stats[style] = StyleStats(growth_rate=growth_rate_int)
-                else:
-                    style_stats[style].add_gr(growth_rate_int)
-            elif MELEE_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE in line:
-                result['Hits'] += 1
+        if event.timestamp not in timestamps.keys():
+            timestamps[event.timestamp] = TimeStats()
+        timestamps[event.timestamp].add_melee_event(event)
 
-                targ_weap_dmg = get_target_weapon_and_damage(line, True, False, targets, weapon_stats)
-                result['BaseDamage'] += targ_weap_dmg[2]
+        if event.damage > 0:
+            result['Hits'] += 1
+            result['BaseDamage'] += event.damage
 
-                # Dmg per target
-                targets[targ_weap_dmg[0]].add_hit()
-                targets[targ_weap_dmg[0]].add_damage(targ_weap_dmg[2])
+        if event.proc > 0:
+            result['Procs'] += 1
+            result['ProcDamage'] += event.proc
 
-                # Dmg per weapon
-                weapon_stats[targ_weap_dmg[1]].add_use(targ_weap_dmg[2])
-                
-                # Dmg per style
-                if style != '':
-                    if style not in style_stats.keys():
-                        style_stats[style] = StyleStats(damage=targ_weap_dmg[2])
-                    else:
-                        style_stats[style].add_use_and_damage(targ_weap_dmg[2])
-                else:
-                    style_stats['-unstyled-'].add_use_and_damage(targ_weap_dmg[2])
+        if event.crit > 0:
+            result['Crits'] += 1
+            result['CritDamage'] += event.crit
 
-                style = ''
-            elif MELEE_OFFENSE_DMG_ADD_MESSAGE in line:
-                targ_weap_dmg = get_target_weapon_and_damage(line, False, False, targets, weapon_stats)
-                result['BaseDamage'] += targ_weap_dmg[2]
-                targets[targ_weap_dmg[0]].add_damage(targ_weap_dmg[2])
-            elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
-                #If the 4th word isn't "for" then it is a melee crit, not a spell
-                if line.split()[4] != 'for':
-                    result['Crits'] += 1
-                    targ_weap_dmg = get_target_weapon_and_damage(line, True, True, targets, weapon_stats)
-                    result['CritDamage'] += targ_weap_dmg[2]
-                    targets[targ_weap_dmg[0]].add_damage(targ_weap_dmg[2])
-            elif MELEE_OFFENSE_ATTACK_EVADE_MESSAGE in line:
-                result['Evades'] += 1
-                target = add_attack_non_hit_target(line, 'evades', targets)
-                targets[target].add_evade()
-            elif MELEE_OFFENSE_ATTACK_PARRY_MESSAGE in line:
-                result['Parries'] += 1
-                target = add_attack_non_hit_target(line, 'parries', targets)
-                targets[target].add_parry()
-            elif MELEE_OFFENSE_ATTACK_BLOCK_MESSAGE in line:
-                result['Blocks'] += 1
-                target = add_attack_non_hit_target(line, 'blocks', targets)
-                targets[target].add_block()
-            elif MELEE_OFFENSE_ATTACK_BLADE_TURN_MISS_MESSAGE in line:
-                result['Bladeturns'] += 1
-                is_bladeturned = True
-            elif MELEE_OFFENSE_ATTACK_MISS_MESSAGE in line:
-                if not is_bladeturned:
-                    result['Misses'] += 1
-                is_bladeturned = False
-            elif MELEE_OFFENSE_ATTACK_FUMBLE_MESSAGE in line:
-                result['Fumbles'] += 1
-            elif MELEE_OFFENSE_ATTACK_ABSORB_MESSAGE in line:
-                result['Absorbed'] += int(line.split()[4])
-        except Exception as err:
-            error_messages.append('MA (line {0}): {1}'.format(current_line, err))
-            continue
+        result['Evades'] += event.evade
+        result['Parries'] += event.parry
+        result['Blocks'] += event.block
+        result['Misses'] += event.miss
+        result['Fumbles'] += event.fumble
+        result['Bladeturns'] += event.bladeturn
+        result['Absorbed'] += event.absorb
 
-    target_list = dict_to_list(targets)
-    result['Targets'] = sorted(target_list, key=operator.itemgetter(5), reverse=True)
+    result['TotalAttacks'] = result['Hits'] + result['Misses'] + result['Bladeturns'] + \
+        result['Evades'] + result['Parries'] + result['Blocks'] + result['Fumbles']
+    result['TotalDamage'] = result['BaseDamage'] + result['CritDamage'] + result['ProcDamage']
 
-    weapon_stats_list = dict_to_list(weapon_stats)
-    result['WeaponStats'] = sorted(weapon_stats_list, key=operator.itemgetter(2), reverse=True)
+    targets_list = dict_to_list(targets)
+    result['Targets'] = sorted(targets_list, key=operator.itemgetter(11), reverse=True)
 
-    style_stats_list = dict_to_list(style_stats)
-    result['StyleStats'] = sorted(style_stats_list, key=operator.itemgetter(3), reverse=True)
+    weapon_stats_list = dict_to_list(weapons)
+    result['WeaponStats'] = sorted(weapon_stats_list, key=operator.itemgetter(8), reverse=True)
 
-    result['TotalAttacks'] = result['Hits'] + result['Misses'] + \
-        result['Evades'] + result['Parries'] + result['Blocks']
-    result['TotalDamage'] = result['BaseDamage'] + result['CritDamage']
+    styles_list = dict_to_list(styles)
+    result['StyleStats'] = sorted(styles_list, key=operator.itemgetter(5), reverse=True)
 
-    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses', 'Crits', 'Fumbles']
-    try:
-        result = calculate_attack_percents(result, melee_events)
-    except Exception as err:
-        error_messages.append('MAP: {0}'.format(err))
+    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', \
+        'Misses', 'Crits', 'Fumbles', 'Procs', 'Bladeturns']
+    result = calculate_attack_percents(result, melee_events)
 
     return result
 
-def add_attack_non_hit_target(line, keyword, targets):
+
+def get_attack_non_hit_target(line, keyword):
     """Gets the target of an attack that did not land"""
     split_line = line.split()
     target = ' '.join(split_line[1:split_line.index(keyword)])
     target = target.replace('The', '')
 
-    if target not in targets.keys():
-        targets[target] = MeleeTarget()
-
     return target
 
 def dict_to_list(dict_to_convert):
-    """Converts a dictionary to a tuple. The first item of the
+    """Converts a dictionary to a multi-dimensional array. The first item of the
         tuple is the key from the dictionary"""
     result_list = []
     for name, values in dict_to_convert.items():
@@ -318,136 +504,188 @@ def dict_to_list(dict_to_convert):
 
     return result_list
 
-def parse_caster_attack(readf, error_messages):
+def parse_caster_attack(events, error_messages, should_recurse):
     """Parses the log file for casting statistics.
     This includes spells + procs until I figure out how to differentiate them."""
-    readf.seek(0)
-    current_line = 0
-    result = {}
+    spell_events = []
+    non_local = Nonlocal()
+    non_local.spell_event = None
+    event_timestamp = events[0].split()[0]
+
+    contains_melee_event = False
+
+    prev_line_melee = False # This is to keep track of proc vs dd
+
+    for line in events:
+        if 'You cast a' in line:
+            split_line = line.split()
+            if non_local.spell_event is not None:
+                spell_events.append(non_local.spell_event)
+
+            if 'spell!' in split_line:
+                spell_name = ' '.join(split_line[4:split_line.index('spell!')])
+            else:
+                spell_name = ' '.join(split_line[4:split_line.index('Spell!')])
+
+            non_local.spell_event = SpellEvent()
+            non_local.spell_event.timestamp = event_timestamp
+            non_local.spell_event.spell = spell_name
+
+            prev_line_melee = False
+
+        elif 'You hit' in line and 'extra damage!' not in line:
+            target_weapon_damage = get_target_weapon_and_damage(line, False, False)
+
+            # Spell vs Proc: what was the previous line?
+            if prev_line_melee:
+                continue
+
+            if non_local.spell_event is not None:
+                if non_local.spell_event.damage > 0:
+                    next_spell_event = SpellEvent()
+                    next_spell_event.timestamp = event_timestamp
+                    spell_events.append(non_local.spell_event)
+                    # Copy name of spell from last event
+                    next_spell_event.spell = non_local.spell_event.spell
+                    non_local.spell_event = next_spell_event
+
+            # Single target instant
+            else:
+                non_local.spell_event = SpellEvent()
+                non_local.spell_event.timestamp = event_timestamp
+
+            non_local.spell_event.target = target_weapon_damage[0]
+            non_local.spell_event.damage = target_weapon_damage[2]
+
+        elif 'You critical hit for' in line:
+            # If the 4th word is "for" then it is a spell crit, not melee
+            if line.split()[4] == 'for':
+                target_weapon_damage = get_target_weapon_and_damage(line, False, True)
+
+                if non_local.spell_event is None:
+                    error_messages.append('Spell proc without base dmg')
+                else:
+                    non_local.spell_event.crit = target_weapon_damage[2]
+
+                prev_line_melee = False
+
+            else:
+                prev_line_melee = True
+
+        elif 'resists the effect' in line:
+            if prev_line_melee:
+                continue
+
+            split_line = line.split()
+            target = ' '.join(split_line[1:split_line.index('resists')])
+            target = target.replace('The ', '')
+
+            if non_local.spell_event is None:
+                non_local.spell_event = SpellEvent()
+                non_local.spell_event.timestamp = event_timestamp
+
+            non_local.spell_event.target = target
+            non_local.spell_event.resist = 1
+
+            prev_line_melee = False
+
+        elif 'have that effect again' in line \
+            or 'you get' in line \
+            or 'your guild due' in line \
+            or 'you just killed' in line \
+            or 'gain no experience' in line \
+            or 'is worth no' in line \
+            or 'resists the effect' in line \
+            or 'already has that effect' in line \
+            or 'Spell Failed' in line \
+            or 'dies!' in line:
+            prev_line_melee = False
+
+            continue
+
+        elif 'A crystal shield covers' in line:
+            continue
+
+        else:
+            if 'You attack' in line or 'You perform your' in line:
+                contains_melee_event = True
+                prev_line_melee = True
+            else:
+                prev_line_melee = False
+            if non_local.spell_event is not None:
+                spell_events.append(non_local.spell_event)
+            non_local.spell_event = None
+
+    if non_local.spell_event is not None:
+        spell_events.append(non_local.spell_event)
+
+    if contains_melee_event and should_recurse:
+        melee_events = parse_melee_attack(events, error_messages, False)[0]
+    else:
+        melee_events = None
+
+    return spell_events, melee_events
+
+def aggregate_spell_events(events_list):
+    """Aggregates list of spell events"""
     targets = {}
-    result['Targets'] = {}
+    spells = {}
+    timestamps = {}
+
+    result = {}
     result['Landed'] = 0
     result['Crits'] = 0
     result['Resists'] = 0
     result['BaseDamage'] = 0
     result['CritDamage'] = 0
 
-    # spells[name] = [casted, landed, resisted, crits, damage]
-    spells = {}
-    spells['DD/Proc/Debuff'] = SpellStats()
-    spell_name = ''
-    spell_cast_time = ''
-    spell_target = ''
+    for event in events_list:
+        # Targets
+        if event.target != '':
+            if event.target not in targets.keys():
+                targets[event.target] = SpellTarget()
+            targets[event.target].add_spell_event(event)
 
-    for line in readf:
-        current_line += 1
-        try:
-            if CHAT_MESSAGE_INDICATOR in line:
-                continue
-            elif CASTER_OFFENSE_SPELL_CAST_MESSAGE in line:
-                split_line = line.split()
-                if 'spell!' in split_line:
-                    spell_name = ' '.join(split_line[4:split_line.index('spell!')])
-                else:
-                    spell_name = ' '.join(split_line[4:split_line.index('Spell!')])
+        # Spells
+        if event.spell == '':
+            event.spell = 'DD/Debuff'
+        if event.spell not in spells.keys():
+            spells[event.spell] = SpellStats()
+        spells[event.spell].add_spell_event(event)
 
-                if spell_name not in spells.keys():
-                    spells[spell_name] = SpellStats(casted=1)
-                else:
-                    spells[spell_name].add_cast()
+        # Timestamp
+        if event.timestamp not in timestamps.keys():
+            timestamps[event.timestamp] = TimeStats()
+        timestamps[event.timestamp].add_spell_event(event)
 
-                spell_cast_time = split_line[0]
-            elif CASTER_OFFENSE_ATTACK_MESSAGE in line and MELEE_OFFENSE_DMG_ADD_MESSAGE not in line:
-                result['Landed'] += 1
-                target_weapon_damage = get_target_weapon_and_damage(line, False, False, targets, None)
-                
-                #Keep track of this in case next line is a crit message
-                spell_target = target_weapon_damage[0]
+        if event.damage > 0:
+            result['Landed'] += 1
+            result['BaseDamage'] += event.damage
+        if event.crit > 0:
+            result['Crits'] += 1
+            result['CritDamage'] += event.crit
 
-                result['BaseDamage'] += target_weapon_damage[2]
-                if target_weapon_damage[0] not in targets.keys():
-                    targets[target_weapon_damage[0]] = SpellTarget(casted=1, landed=1,damage=target_weapon_damage[2])
-                else:
-                    # targets[target_weapon_damage[0]] += target_weapon_damage[2]
-                    targets[target_weapon_damage[0]].add_cast()
-                    targets[target_weapon_damage[0]].add_landed()
-                    targets[target_weapon_damage[0]].add_damage(target_weapon_damage[2])
-
-                spell_time = line.split()[0]
-                # If there's a new timestamp, then it won't be the same spell (unless bleed/dot)
-                if spell_time != spell_cast_time or spell_name == '':
-                    spell_name = 'DD/Proc/Debuff'
-
-                spells[spell_name].add_landed()
-                spells[spell_name].add_damage(target_weapon_damage[2])
-            elif CRITICAL_HIT_OFFENSE_MESSAGE in line:
-                #If the 4th word is "for" then it is a spell crit, not melee
-                if line.split()[4] == 'for':
-                    result['Crits'] += 1
-                    target_weapon_damage = get_target_weapon_and_damage(line, False, True, targets, None)
-                    result['CritDamage'] += target_weapon_damage[2]
-
-                    targets[spell_target].add_crit()
-                    targets[spell_target].add_damage(target_weapon_damage[2])
-
-                    spell_time = line.split()[0]
-                    if spell_time != spell_cast_time or spell_name == '':
-                        spell_name = 'DD/Proc/Debuff'
-
-                    spells[spell_name].add_crit()
-                    spells[spell_name].add_damage(target_weapon_damage[2])
-            elif CASTER_OFFENSE_SPELL_RESIST_MESSAGE in line:
-                result['Resists'] += 1
-
-                split_line = line.split()
-                target = ' '.join(split_line[1:split_line.index('resists')])
-                target = target.replace('The', '')
-
-                if target not in targets.keys():
-                    targets[target] = SpellTarget(casted=1, resisted=1)
-                else:
-                    targets[target].add_cast()
-                    targets[target].add_resisted()
-
-                spell_time = line.split()[0]
-                if spell_time != spell_cast_time or spell_name == '':
-                    spell_name = 'DD/Proc/Debuff'
-                if spell_name not in spells.keys():
-                    spells[spell_name] = SpellStats(casted=1, resisted=1)
-                else:
-                    spells[spell_name].add_cast()
-                    spells[spell_name].add_resisted()
-
-            else:
-                spell_name = ''
-                spell_target = ''
-
-        except Exception as err:
-            error_messages.append('CA (line {0}): {1}'.format(current_line, err))
-            continue
-
-    targets_as_list = dict_to_list(targets)
-    result['Targets'] = sorted(targets_as_list, key=operator.itemgetter(5), reverse=True)
-
-    # Remove the spells that weren't damage dealing (buffs, in theory)
-    cleaned_spells = {}
-    for spell, stats in spells.items():
-        if stats.is_dmg_spell():
-            cleaned_spells[spell] = stats
-
-    spells_as_list = dict_to_list(cleaned_spells)
-    result['SpellStats'] = sorted(spells_as_list, key=operator.itemgetter(1), reverse=True)
+        result['Resists'] += event.resist
 
     result['TotalDamage'] = result['BaseDamage'] + result['CritDamage']
     result['TotalAttacks'] = result['Landed'] + result['Resists']
 
+    targets_list = dict_to_list(targets)
+    result['Targets'] = sorted(targets_list, key=operator.itemgetter(7), reverse=True)
+
+    cleaned_spell_list = {}
+    for spell, stats in spells.items():
+        if stats.is_dmg_dealing():
+            cleaned_spell_list[spell] = stats
+
+    spells_list = dict_to_list(cleaned_spell_list)
+    result['SpellStats'] = sorted(spells_list, key=operator.itemgetter(7), reverse=True)
+
     caster_events = ['Landed', 'Resists', 'Crits']
-    try:
-        result = calculate_attack_percents(result, caster_events)
-    except Exception as err:
-        error_messages.append('CAP: {0}'.format(err))
+    result = calculate_attack_percents(result, caster_events)
 
     return result
+
 
 def parse_defense_combat(readf, error_messages):
     """Parses attacks against the player."""
@@ -515,7 +753,7 @@ def parse_defense_combat(readf, error_messages):
                 result['SpellDamage'] += armor_damage[1]
             elif MELEE_BUFFER_ABSORB_MESSAGE in line:
                 result['Absorbed'] += parse_healing_and_source(line, False, True)[0]
-        except Exception as err:
+        except IndexError as err:
             error_messages.append('DC (line {0}): {1}'.format(current_line, err))
             continue
 
@@ -533,11 +771,12 @@ def parse_defense_combat(readf, error_messages):
 
     try:
         result = calculate_defense_percents(result)
-    except Exception as err:
+    except (IndexError, ZeroDivisionError) as err:
         error_messages.append('CDP: {0}'.format(err))
     return result
 
 def add_defense_non_hit_source(line, sources):
+    """Finds the name of the attacker who failed to hit"""
     split_line = line.split()
     source = ' '.join(split_line[1:split_line.index('attacks')])
 
@@ -568,7 +807,7 @@ def calculate_defense_percents(result):
                 float(result[event])/result['TotalSpellAttacks'])
         else:
             result['Percents'][event] = 0
-    
+
     return result
 
 def parse_combat_summary(readf, error_messages):
@@ -602,7 +841,7 @@ def parse_combat_summary(readf, error_messages):
                     result['RPs'] += int(line.split()[3])
             elif DEFENSE_DEATH_MESSAGE in line:
                 result['Deaths'] += 1
-        except Exception as err:
+        except IndexError as err:
             error_messages.append('CS (line {0}): {1}'.format(current_line, err))
             continue
 
@@ -614,11 +853,15 @@ def calculate_attack_percents(result, event_list):
     """Calculates percentages of offensive events"""
     result['Percents'] = {}
     for event in event_list:
-        if result['TotalAttacks'] > 0:
+        if event == 'Crits' and result[event_list[0]] > 0:
             result['Percents'][event] = '{0:.2f}'.format(
-                float(result[event])/result['TotalAttacks'])
+                float(result[event])/result[event_list[0]])
         else:
-            result['Percents'][event] = 0
+            if result['TotalAttacks'] > 0:
+                result['Percents'][event] = '{0:.2f}'.format(
+                    float(result[event])/result['TotalAttacks'])
+            else:
+                result['Percents'][event] = 0
 
     return result
 
@@ -646,7 +889,7 @@ def get_armor_and_damage(line, sources, is_melee, is_crit):
 
     return [armor, damage]
 
-def get_target_weapon_and_damage(line, is_melee, is_crit, targets, weapon_stats):
+def get_target_weapon_and_damage(line, is_melee, is_crit):
     """Gets the target of our attack, the weapon we hit them with,
         and the damage amount. Returns [target, weapon, damage]"""
     split_line = line.split()
@@ -661,7 +904,7 @@ def get_target_weapon_and_damage(line, is_melee, is_crit, targets, weapon_stats)
     else:
         if is_melee:
             target = ' '.join(split_line[3:split_line.index('with')])
-            weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])           
+            weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])
         else:
             target = ' '.join(split_line[3:split_line.index('for')])
             weapon = ''
@@ -669,15 +912,6 @@ def get_target_weapon_and_damage(line, is_melee, is_crit, targets, weapon_stats)
 
     target = target.replace('the ', '')
     weapon = weapon.replace('the ', '')
-
-    if target != '' and target not in targets.keys():
-        if is_melee:
-            targets[target] = MeleeTarget()
-        else:
-            targets[target] = SpellTarget()
-
-    if weapon != '' and weapon_stats is not None and weapon not in weapon_stats.keys():
-        weapon_stats[weapon] = WeaponStats()
 
     return [target, weapon, damage]
 #endregion
@@ -714,13 +948,13 @@ def parse_healing(readf, error_messages):
                     targets[healing_and_target[1]] = HealingStats(healing_and_target[0])
                 else:
                     targets[healing_and_target[1]].add_heal(healing_and_target[0])
-        except Exception as err:
+        except IndexError as err:
             error_messages.append('H (line {0}): {1}'.format(current_line, err))
             continue
 
     if 'yourself' in targets.keys():
         sources['yourself'] = targets['yourself']
-        healing['Received'] += targets['yourself'].get_amount()
+        healing['Received'] += targets['yourself'].amount
 
     sources_list = dict_to_list(sources)
     healing['Sources'] = sorted(sources_list, key=operator.itemgetter(2), reverse=True)
@@ -745,7 +979,7 @@ def parse_healing_and_source(line, is_lifetap, is_absorb):
     else:
         source = ' '.join(split_line[5:split_line.index('for')])
         num = int(split_line[split_line.index('for')+1])
-    
+
     source = source.replace('the ', '')
 
     return [num, source]
@@ -762,69 +996,15 @@ def parse_healing_and_target(line):
     return [amount, target]
 #endregion
 
-#region Printing
-def print_healing(healing):
-    """Prints out the values from the <healing> dictionary"""
-    print('%&%&%&%&%&%& Healing stats %&%&%&%&%&%&')
-    for key, value in healing.items():
-        if key != 'Sources' and key != 'Targets':
-            print(key + ': ' + '{:,}'.format(value))
-    print('++++Healed By++++')
-    for key, value in healing['Sources'].items():
-        print('\t' + key + ': ' + '{:,}'.format(value))
-    print('++++Healing Given++++')
-    for key, value in healing['Targets'].items():
-        print('\t' + key + ': ' + '{:,}'.format(value))
 
-def print_combat(combat):
-    """Prints out the values from the <combat> dictionary"""
-    print('=|====> COMBAT DATA <====|=')
-    print('----> Offensive stats: <----')
-    print('===[] Melee []===')
-    for key, value in combat['Melee_attack'].items():
-        if key != 'Targets':
-            print(key + ': ' + '{:,}'.format(value))
-    print('----Individual targets----')
-    for key, value in combat['Melee_attack']['Targets'].items():
-        print('\t' + key + ': ' + '{:,}'.format(value))
-    print('\n')
-
-
-    print('**** Casting/proc stats ****')
-    for key, value in combat['Caster_attack'].items():
-        if key != 'Targets':
-            print(key + ': ' + '{:,}'.format(value))
-    print('----Individual Targets----')
-    for key, value in combat['Caster_attack']['Targets'].items():
-        print('\t' + key + ': ' + '{:,}'.format(value))
-    print('\n')
-
-    print('||||| Defensive stats |||||')
-    for key, value in combat['Defense'].items():
-        if key != 'Sources':
-            print(key + ': ' + '{:,}'.format(value))
-    print('++++Individual attackers++++')
-    for key, value in combat['Defense']['Sources'].items():
-        print('\t' + key + ': ' + '{:,}'.format(value))
-    print('\n')
-
-def print_money(cash_flow):
-    """Prints out the values from the <cash_flow> dictionary"""
-    print('\n\n$$$$ CASH FLOW $$$$')
-    print('Money looted: ' + currency_print_helper(cash_flow['Loot']))
-    print('Money spent: ' + currency_print_helper(cash_flow['Expense']))
-    print('Money received: ' + currency_print_helper(cash_flow['Income']))
-    print('\n\n')
-#endregion
-
-def parse_uploaded_file(file):
+def parse_uploaded_file(upload_file):
     """Performs parsing process on 'file'"""
     response = {}
     error_messages = []
     try:
-        cash_flow = parse_cash_flow(file, error_messages)
-        combat = parse_combat(file, error_messages)
-        healing = parse_healing(file, error_messages)
+        cash_flow = parse_cash_flow(upload_file, error_messages)
+        combat = parse_combat(upload_file, error_messages)
+        healing = parse_healing(upload_file, error_messages)
 
         result = {}
         result['Cash'] = cash_flow
@@ -855,221 +1035,293 @@ def currency_print_helper(currency_dict):
     return result_text
 
 
-def parse_test_file():
-    """Main function"""
-    response = {}
-    error_messages = []
-    # try:
-    with open('C:/Git/Daoc_log_parse/Log Files/alibi_0105.log', 'r') as readf:
-        result = {}
-        cash_flow = parse_cash_flow(readf,error_messages)
-        combat = parse_combat(readf,error_messages)
-        healing = parse_healing(readf,error_messages)
-
-        # print_money(cash_flow)
-        # print_combat(combat)
-        # print_healing(healing)
-        # print('\n\n')
-
-    result['Cash'] = cash_flow
-    result['Combat'] = combat
-    result['Healing'] = healing
-
-    response['Results'] = result
-    response['Messages'] = error_messages
-
-    j_result = json.dumps(result)
-    print(j_result)
-
-    # except IOError:
-    #     print("Failed to open file")
-    #     exit(0)
-
-
 #region Classes
-class MeleeTarget:
+class Nonlocal(object):
+    """A container to hold non-scope specific class objects"""
+    mel_event = None
+    spell_event = None
+
+class MeleeEvent(object):
+    """Tracks all possible attributes of a melee event"""
+    def __init__(self):
+        self.timestamp = ''
+        self.style = ''
+        self.growth_rate = 0
+        self.weapon = ''
+        self.target = ''
+        self.damage = 0
+        self.damage_add = 0
+        self.proc = 0
+        self.crit = 0
+        self.block = 0
+        self.parry = 0
+        self.evade = 0
+        self.absorb = 0
+        self.miss = 0
+        self.fumble = 0
+        self.bladeturn = 0
+
+class SpellEvent(object):
+    """Tracks all possible attributes of a spell-casting event"""
+    def __init__(self):
+        self.timestamp = ''
+        self.target = ''
+        self.spell = ''
+        self.damage = 0
+        self.crit = 0
+        self.resist = 0
+
+class TimeStats(object):
+    """Track stats for a timestamp"""
+    def __init__(self):
+        self.melee_damage = 0
+        self.spell_damage = 0
+
+    def add_melee_event(self, event):
+        """Records a melee event for the timestamp"""
+        self.melee_damage += event.damage + event.damage_add + event.proc + event.crit
+
+    def add_spell_event(self, event):
+        """Records a spell event for the timestamp"""
+        self.spell_damage += event.damage + event.crit
+
+class StyleStats(object):
+    """Tracks stats for weapon styles"""
+    def __init__(self):
+        self.growth_rate = 0
+        self.damage = self.max_dmg = self.min_dmg = 0
+        self.count = 0
+
+    def add_melee_event(self, event):
+        """Records a melee event for the style"""
+        self.count += 1
+        if event.damage > 0:
+            total_event_damage = event.damage + event.damage_add + event.proc + event.crit
+            self.damage += total_event_damage
+            self.growth_rate += event.growth_rate
+            if self.min_dmg == 0 or total_event_damage < self.min_dmg:
+                self.min_dmg = total_event_damage
+            if total_event_damage > self.max_dmg:
+                self.max_dmg = total_event_damage
+
+    def get_all_stats(self):
+        """Returns all values for the Style"""
+        avg_growth_rate = 0
+        if self.count > 0:
+            avg_growth_rate = self.growth_rate/self.count
+        return [self.count, avg_growth_rate, self.min_dmg, self.max_dmg, self.damage]
+
+class WeaponStats(object):
+    """Tracks stats for weapons"""
+    def __init__(self):
+        self.count = 0
+        self.damage = self.max_dmg = self.min_dmg = 0
+        self.procs = 0
+        self.proc_dmg = 0
+        self.crits = 0
+        self.crit_dmg = 0
+
+    def add_melee_event(self, event):
+        """Records a melee event for the weapon"""
+        if event.damage > 0:
+            self.count += 1
+
+            total_event_damage = event.damage + event.damage_add + event.proc + event.crit
+            self.damage += total_event_damage
+            if self.min_dmg == 0 or total_event_damage < self.min_dmg:
+                self.min_dmg = total_event_damage
+            if total_event_damage > self.max_dmg:
+                self.max_dmg = total_event_damage
+            if event.proc > 0:
+                self.procs += 1
+                self.proc_dmg += event.proc
+            if event.crit > 0:
+                self.crits += 1
+                self.crit_dmg += event.crit
+
+    def get_all_stats(self):
+        """Returns all values for the Weapon"""
+        return [self.count, self.crits, self.crit_dmg, self.procs, \
+            self.proc_dmg, self.min_dmg, self.max_dmg, self.damage]
+
+class SpellStats(object):
+    """Tracks stats for casting target"""
+    def __init__(self):
+        self.casted = 0
+        self.landed = 0
+        self.resisted = 0
+        self.crits = 0
+        self.crit_dmg = 0
+        self.max_dmg = self.min_dmg = self.damage = 0
+
+    def add_spell_event(self, event):
+        """Records a spell event for the spell"""
+        if event.damage > 0:
+            self.landed += 1
+
+        total_event_damage = event.damage + event.crit
+
+        self.damage += total_event_damage
+        if self.min_dmg == 0 or total_event_damage < self.min_dmg:
+            self.min_dmg = total_event_damage
+        if total_event_damage > self.max_dmg:
+            self.max_dmg = total_event_damage
+
+        if event.crit > 0:
+            self.crits += 1
+            self.crit_dmg += event.crit
+
+        self.resisted += event.resist
+
+    def is_dmg_dealing(self):
+        """Returns true if the spell has landed or caused damage"""
+        return self.landed > 0 or self.damage > 0
+
+    def get_all_stats(self):
+        """Returns all values for the Spell"""
+        return [self.landed, self.resisted, self.crits, self.crit_dmg, \
+            self.min_dmg, self.max_dmg, self.damage]
+
+class MeleeTarget(object):
     """Tracks stats for melee target"""
+    def __init__(self):
+        self.hits = 0
+        self.blocks = 0
+        self.parries = 0
+        self.evades = 0
+        self.crits = 0
+        self.crit_dmg = 0
+        self.procs = 0
+        self.proc_dmg = 0
+        self.max_dmg = self.min_dmg = self.damage = 0
 
-    def __init__(self, hits=0, blocks=0, parries=0, evades=0, damage=0):
-        self.hits = hits
-        self.blocks = blocks
-        self.parries = parries
-        self.evades = evades
-        self.damage = damage
+    def add_melee_event(self, event):
+        """Records a melee event for the target"""
+        if event.damage > 0:
+            self.hits += 1
 
-    def add_hit(self):
+            total_event_damage = event.damage + event.damage_add + event.proc + event.crit
+            self.damage += total_event_damage
+            if self.min_dmg == 0 or total_event_damage < self.min_dmg:
+                self.min_dmg = total_event_damage
+            if total_event_damage > self.max_dmg:
+                self.max_dmg = total_event_damage
+
+        if event.crit > 0:
+            self.crits += 1
+            self.crit_dmg += event.crit
+
+        if event.proc > 0:
+            self.procs += 1
+            self.proc_dmg += event.proc
+
+        self.blocks += event.block
+        self.parries += event.parry
+        self.evades += event.evade
+
+    def get_all_stats(self):
+        """Returns all values for the target"""
+        return [self.hits, self.blocks, self.parries, self.evades, self.crits,  \
+            self.crit_dmg, self.procs, self.proc_dmg, self.min_dmg, self.max_dmg, self.damage]
+
+class SpellTarget(object):
+    """Keeps track of spell stats per target"""
+    def __init__(self):
+        self.landed = 0
+        self.resisted = 0
+        self.crits = 0
+        self.crit_dmg = 0
+        self.max_dmg = self.min_dmg = self.damage = 0
+
+    def add_spell_event(self, event):
+        """Records a spell event for the target"""
+        if event.damage > 0:
+            self.landed += 1
+
+        total_event_damage = event.damage + event.crit
+
+        self.damage += total_event_damage
+        if self.min_dmg == 0 or total_event_damage < self.min_dmg:
+            self.min_dmg = total_event_damage
+        if total_event_damage > self.max_dmg:
+            self.max_dmg = total_event_damage
+
+        if event.crit > 0:
+            self.crits += 1
+            self.crit_dmg += event.crit
+
+        self.resisted += event.resist
+
+    def get_all_stats(self):
+        """Returns all values for the target"""
+        return [self.landed, self.resisted, self.crits, self.crit_dmg, \
+            self.min_dmg, self.max_dmg, self.damage]
+
+
+class DefenseStats(object):
+    """Tracks defensive stats per attacker"""
+    def __init__(self):
+        self.attacks = 0
+        self.hits = 0
+        self.blocks = 0
+        self.parries = 0
+        self.evades = 0
+        self.misses = 0
+        self.damage = 0
+        self.crits = 0
+
+    def add_damage(self, damage):
+        """Track a damage event"""
+        self.attacks += 1
         self.hits += 1
-    
+        self.damage += damage
+
+    def add_crit(self, damage):
+        """Track a critical hit"""
+        self.crits += 1
+        self.damage += damage
+
     def add_block(self):
+        """Track a block event"""
+        self.attacks += 1
         self.blocks += 1
-    
+
     def add_parry(self):
+        """Track a parry event"""
+        self.attacks += 1
         self.parries += 1
 
     def add_evade(self):
+        """Track an evade event"""
+        self.attacks += 1
         self.evades += 1
-    
-    def add_damage(self, amount):
-        self.damage += amount
+
+    def add_miss(self):
+        """Track a miss event"""
+        self.attacks += 1
+        self.misses += 1
 
     def get_all_stats(self):
-        return [self.hits, self.blocks, self.parries, self.evades, self.damage]
+        """Returns all values"""
+        return [self.attacks, self.hits, self.blocks, self.parries, \
+            self.evades, self.misses, self.crits, self.damage]
 
-class SpellTarget:
-    def __init__(self, casted=0, landed=0, resisted=0, crits=0, damage=0):
-        self.casted = casted
-        self.landed = landed
-        self.resisted = resisted
-        self.crits = crits
-        self.damage = damage
-
-    def add_cast(self):
-        self.casted += 1
-
-    def add_landed(self):
-        self.landed += 1
-
-    def add_resisted(self):
-        self.resisted += 1
-
-    def add_crit(self):
-        self.crits += 1
-
-    def add_damage(self, dmg):
-        self.damage += dmg
-
-    def get_all_stats(self):
-        return [self.casted, self.landed, self.resisted, self.crits, self.damage]
-
-class SpellStats:
-    """Tracks stats for casting target"""
-    def __init__(self, casted=0, landed=0, resisted=0, crits=0, damage=0):
-        self.casted = casted
-        self.landed = landed
-        self.resisted = resisted
-        self.crits = crits
-        self.damage = damage
-
-    def add_cast(self):
-        self.casted += 1
-
-    def add_landed(self):
-        self.landed += 1
-
-    def add_resisted(self):
-        self.resisted += 1
-
-    def add_crit(self):
-        self.crits += 1
-
-    def add_damage(self, dmg):
-        self.damage += dmg
-
-    def is_dmg_spell(self):
-        return self.landed != 0 or self.resisted != 0
-
-    def get_all_stats(self):
-        return [self.casted, self.landed, self.resisted, self.crits, self.damage]
-
-class ArmorStats:
+class ArmorStats(object):
     """Tracks defensive stats for armor"""
     def __init__(self, hits=0, damage=0):
         self.hits = hits
         self.damage = damage
 
     def add_hit_with_damage(self, damage):
+        """Track a hit for the piece of armor"""
         self.hits += 1
         self.damage += damage
 
     def get_all_stats(self):
+        """Returns all values for the armor"""
         return [self.hits, self.damage]
 
-class StyleStats:
-    """Tracks stats for weapon styles"""
-    def __init__(self, growth_rate=0, damage=0):
-        self.growth_rate = growth_rate
-        self.damage = damage
-        self.count = 0
-        self.max_dmg = damage
-        self.min_dmg = damage
-
-    def add_gr(self, growth_rate):
-        self.growth_rate += growth_rate
-
-    def add_use_and_damage(self, damage):
-        self.count += 1
-        self.damage += damage
-        if damage > self.max_dmg:
-            self.max_dmg = damage
-        if damage < self.min_dmg or self.min_dmg == 0:
-            self.min_dmg = damage
-
-    def get_all_stats(self):
-        avg_growth_rate = 0
-        if self.count > 0:
-            avg_growth_rate = self.growth_rate/self.count
-        return [self.count, avg_growth_rate, self.damage, self.min_dmg, self.max_dmg]
-
-class WeaponStats:
-    """Tracks stats for weapons"""
-    def __init__(self, damage=0):
-        self.count = 1
-        self.damage = damage
-        self.max_dmg = damage
-        self.min_dmg = damage
-
-    def add_use(self, damage):
-        self.damage += damage
-        self.count += 1
-        if damage > self.max_dmg:
-            self.max_dmg = damage
-        elif damage < self.min_dmg or self.min_dmg == 0:
-            self.min_dmg = damage
-
-    def get_all_stats(self):
-        return [self.count, self.damage, self.min_dmg, self.max_dmg]
-
-class DefenseStats:
-    """Tracks defensive stats per attacker"""
-    def __init__(self, damage=0, block=0, parry=0, evade=0, miss=0, crits=0):
-        self.attacks = 0
-        self.hits = 0
-        self.blocks = block
-        self.parries = parry
-        self.evades = evade
-        self.misses = miss
-        self.damage = damage
-        self.crits = crits
-
-    def add_damage(self, damage):
-        self.attacks +=1
-        self.hits += 1
-        self.damage += damage
-
-    def add_crit(self, damage):
-        self.crits += 1
-        self.damage += damage
-
-    def add_block(self):
-        self.attacks +=1
-        self.blocks += 1
-    
-    def add_parry(self):
-        self.attacks += 1
-        self.parries += 1
-
-    def add_evade(self):
-        self.attacks += 1
-        self.evades += 1
-
-    def add_miss(self):
-        self.attacks += 1
-        self.misses += 1
-
-    def get_all_stats(self):
-        return [self.attacks, self.hits, self.blocks, self.parries, self.evades, self.misses, self.crits, self.damage]
-
-class HealingStats:
+class HealingStats(object):
     """Tracks stats for healing"""
     def __init__(self, amount):
         self.count = 1
@@ -1077,17 +1329,16 @@ class HealingStats:
         self.max = amount
 
     def add_heal(self, amount):
+        """Track a healing event"""
         self.count += 1
         self.amount += amount
         if amount > self.max:
             self.max = amount
 
-    def get_amount(self):
-        return self.amount
-
     def get_all_stats(self):
+        """Returns all values"""
         return [self.count, self.amount, self.max]
 #endregion
 
 if __name__ == '__main__':
-    parse_test_file()
+    print 'Yay'
