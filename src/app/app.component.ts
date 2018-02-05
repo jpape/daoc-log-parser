@@ -6,6 +6,7 @@ import { ParserService } from './services/parser.service';
 import { ParsingResults } from '../models/parse-results.model';
 
 
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -22,16 +23,43 @@ export class AppComponent implements OnInit{
 
   resultsForPage: ParsingResults;
 
+  chartData:Array<any> = [
+    {data: [0],
+    label:'Total Dmg'}
+  ];
+  chartLabels:Array<any> = ['[00:00:00]']
+  chartOptions:any = {
+    scaleShowVerticalLines: true,
+    responsive: true
+  };
+  chartType:string = 'bar';
+  chartLegend:boolean = false;
+  chartColors:Array<any> = [
+    {
+      backgroundColor: '#4286f4',
+      borderColor: '#4286f4',
+      pointBackgroundColor: 'rgba(148,159,177,1)',
+      pointBorderColor: '#fff',
+      pointHoverBackgroundColor: '#fff',
+      pointHoverBorderColor: 'rgba(148,159,177,0.8)'
+    }
+  ]
+
+  craftingLabels = ['Fail', '94', '95', '96', '97', '98', '99', '100'];
+  craftingSeries = [];
+  craftingData = [];
+
+  isParsing = false;
+
   todoList = [
     'Determine if bleed damage is distinct from proc/spell damage',
     'Wild healing?',
     'How is kill-count determined?',
-    'Pet damage',
-    'Style growth rates / dmg',
-    'Unassigned crits',
+    'Pet damage'
   ]
 
   errorMessageList = []
+
 
 
   ngOnInit() {
@@ -39,11 +67,13 @@ export class AppComponent implements OnInit{
 
 
   fileSelected(event) {
+    this.isParsing = true;
     let fileList: FileList = event.target.files;
     let file = fileList[0];
     this.parserService.sendFileToParse(file)
       .subscribe(
         (results: any) => {
+          this.isParsing = false;
           let messages = results['Messages']
           if (messages) {
             this.errorMessageList = messages;
@@ -51,11 +81,21 @@ export class AppComponent implements OnInit{
           let castedResults = results['Results'] as ParsingResults;
           if (castedResults) {
             this.resultsForPage = castedResults;
+            this.pushResultsToDataSources(castedResults);
+            
           }
         }
       )
   }
 
+  pushResultsToDataSources(castedResults) {
+    this.chartData = [{data: castedResults.Combat.ChartData.Values, label:'Total Dmg'}];
+    setTimeout(() => {this.chartLabels = castedResults.Combat.ChartData.Labels;}, 50);
+
+    this.craftingSeries = castedResults.Crafting.Series;
+    this.craftingData = castedResults.Crafting.Values;
+  
+  }
 
   currencyPrintHelper(currency_dict) {
     let result_text = '';
@@ -84,5 +124,9 @@ export class AppComponent implements OnInit{
     }
 
     return true;
+  }
+
+  tabChange(event) {
+    alert('Tab changed')
   }
 }

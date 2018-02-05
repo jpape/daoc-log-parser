@@ -8,6 +8,10 @@ export class CombatResults {
         public Defense: DefenseResults,
         public CasterAttack: CasterAttackResults,
         public MeleeAttack: MeleeAttackResults,
+        public ChartData: {
+            Labels: string[],
+            Values: number[]
+        },
         public Summary: CombatSummary
     ) {}
 }

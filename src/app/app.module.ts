@@ -1,8 +1,15 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
-import { FileDropModule } from 'ngx-file-drop';
 import { HttpModule } from '@angular/http';
+
+import { ChartsModule } from 'ng2-charts';
+
+import { AccordionModule } from 'ng2-accordion';
+
+import { MatTabsModule } from '@angular/material/tabs';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 import { ServicesModule } from './services/services.module'
 import { AppComponent } from './app.component';
@@ -15,8 +22,11 @@ import { AppComponent } from './app.component';
     BrowserModule,
     FormsModule,
     ReactiveFormsModule,
-    FileDropModule,
     ServicesModule,
+    ChartsModule,
+    MatExpansionModule,
+    MatTabsModule,
+    BrowserAnimationsModule,
     HttpModule
   ],
   providers: [],

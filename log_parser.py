@@ -6,6 +6,8 @@ __date__ = "2018/01/04"
 import json
 import operator
 
+import craft_parser
+
 #region Message Constants
 CHAT_MESSAGE_INDICATOR = "@@"
 
@@ -125,9 +127,9 @@ def parse_cash_flow(readf, error_messages):
             if CHAT_MESSAGE_INDICATOR in line:
                 continue
             elif MONEY_RECEIVED_MESSAGE in line:
-                money_gained = parse_money_denomination(line)
+                money_gained += parse_money_denomination(line)
             elif MONEY_SPENT_MESSAGE in line:
-                money_spent = parse_money_denomination(line)
+                money_spent += parse_money_denomination(line)
             elif GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line:
                 money_looted += parse_money_denomination(line)
         except IndexError as err:
@@ -199,6 +201,12 @@ def parse_combat(readf, error_messages):
     combat['CasterAttack'] = aggregate_spell_events(spell_events)
     combat['Defense'] = parse_defense_combat(readf, error_messages)
     combat['Summary'] = parse_combat_summary(readf, error_messages)
+
+    dps_results = get_chart_data(melee_events, spell_events, timestamp_dict.keys())
+    combat['ChartData'] = {
+        'Labels': dps_results[0],
+        'Values': dps_results[1]
+    }
 
     return combat
 
@@ -1013,6 +1021,8 @@ def parse_uploaded_file(upload_file):
 
         response['Results'] = result
 
+        # result['Crafting'] = craft_parser.parse_crafting(upload_file)
+
     except IOError:
         error_messages.append("Failed to open file")
 
@@ -1020,20 +1030,39 @@ def parse_uploaded_file(upload_file):
     j_result = json.dumps(response)
     return j_result
 
-def currency_print_helper(currency_dict):
-    """Helper method for printing currency prettily"""
-    result_text = ''
-    if currency_dict[0] > 0:
-        result_text += str(currency_dict[0]) + 'p '
-    if currency_dict[1] > 0:
-        result_text += str(currency_dict[1]) + 'g '
-    if currency_dict[2] > 0:
-        result_text += str(currency_dict[2]) + 's '
-    if currency_dict[3] > 0:
-        result_text += str(currency_dict[3]) + 'c'
 
-    return result_text
 
+def get_chart_data(melee_events, spell_events, timestamps):
+    """Compiles data for the DPS chart"""
+    total_dps = {}
+    total_dps = aggregate_dps(spell_events, aggregate_dps(melee_events, total_dps))
+
+    # for ts in timestamps:
+    #     if ts not in total_dps.keys():
+    #         total_dps[ts] = 0
+
+    sorted_dps = sorted(total_dps.items(), key=operator.itemgetter(0))
+
+    labels = []
+    values = []
+    for val in sorted_dps:
+        labels.append(val[0])
+        values.append(val[1])
+
+    return [labels, values]
+
+def aggregate_dps(events, dic):
+    """Aggregates the DPS per timestamp"""
+    for event in events:
+        if event.timestamp not in dic.keys():
+            dic[event.timestamp] = 0
+
+        dic[event.timestamp] += event.damage + event.crit
+
+        if type(event) == MeleeEvent:
+            dic[event.timestamp] += event.damage_add + event.proc
+
+    return dic
 
 #region Classes
 class Nonlocal(object):
@@ -1341,4 +1370,4 @@ class HealingStats(object):
 #endregion
 
 if __name__ == '__main__':
-    print 'Yay'
+    print('Yay')

@@ -6,6 +6,10 @@ export class ParsingResults {
     constructor(
         public Cash: CashResults,
         public Combat: CombatResults,
-        public Healing: HealingResults
+        public Healing: HealingResults,
+        public Crafting: {
+            Series: string[],
+            Values: number[][]
+        }
     ) { }
 }
