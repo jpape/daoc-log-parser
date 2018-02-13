@@ -4,12 +4,14 @@ import { HealingResults } from "./healing-results.model";
 
 export class ParsingResults {
     constructor(
-        public Cash: CashResults,
         public Combat: CombatResults,
-        public Healing: HealingResults,
         public Crafting: {
             Series: string[],
             Values: number[][]
+        },
+        public PvE: {
+            Monies: CashResults,
+            Drops: any[][]
         }
     ) { }
 }

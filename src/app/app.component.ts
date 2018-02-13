@@ -4,6 +4,7 @@ import { FileDropModule, UploadFile, UploadEvent } from 'ngx-file-drop';
 import { ParserService } from './services/parser.service';
 
 import { ParsingResults } from '../models/parse-results.model';
+import { MatTabChangeEvent } from '@angular/material/tabs';
 
 
 
@@ -23,18 +24,15 @@ export class AppComponent implements OnInit{
 
   resultsForPage: ParsingResults;
 
-  chartData:Array<any> = [
-    {data: [0],
-    label:'Total Dmg'}
-  ];
-  chartLabels:Array<any> = ['[00:00:00]']
-  chartOptions:any = {
+
+
+  dpsChartData:Array<any> = [  ];
+  dpsChartLabels:Array<any> = []
+  dpsChartOptions:any = {
     scaleShowVerticalLines: true,
     responsive: true
   };
-  chartType:string = 'bar';
-  chartLegend:boolean = false;
-  chartColors:Array<any> = [
+  dpsChartColors:Array<any> = [
     {
       backgroundColor: '#4286f4',
       borderColor: '#4286f4',
@@ -44,22 +42,58 @@ export class AppComponent implements OnInit{
       pointHoverBorderColor: 'rgba(148,159,177,0.8)'
     }
   ]
+  dpsLegend: boolean = false;
 
-  craftingLabels = ['Fail', '94', '95', '96', '97', '98', '99', '100'];
-  craftingSeries = [];
-  craftingData = [];
+  // dpsChartData: any[];
 
-  isParsing = false;
-
-  todoList = [
-    'Determine if bleed damage is distinct from proc/spell damage',
-    'Wild healing?',
-    'How is kill-count determined?',
-    'Pet damage'
+  tmpCraftingResultsData = [
+    {
+      "name": "94",
+      "series": [
+        {
+          "name": "stable fire adamantium tincture",
+          "value": 12
+        },
+        {
+          "name": "stable cold adamantium tincture",
+          "value": 15
+        },
+        {
+          "name": "stable matter adamantium tincture",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "name": "95",
+      "series": [
+        {
+          "name": "stable fire adamantium tincture",
+          "value": 5
+        },
+        {
+          "name": "stable cold adamantium tincture",
+          "value": 7
+        },
+        {
+          "name": "stable matter adamantium tincture",
+          "value": 4
+        }
+      ]
+    }
   ]
 
-  errorMessageList = []
+  craftingChartData: any[] = [];
+  craftingData: Array<any> = [  ];
+  craftingLabels:Array<any> = ['Fail', '94', '95', '96', '97', '98', '99', '100'];
 
+  errorMessageList = []
+  isParsing = false;
+
+  hasCraftTabBeenResized = false;
+
+  resultsIncludeCombat = false;
+  resultsIncludeMoney = false;
 
 
   ngOnInit() {
@@ -68,33 +102,98 @@ export class AppComponent implements OnInit{
 
   fileSelected(event) {
     this.isParsing = true;
+    this.hasCraftTabBeenResized = true;
     let fileList: FileList = event.target.files;
     let file = fileList[0];
     this.parserService.sendFileToParse(file)
       .subscribe(
         (results: any) => {
           this.isParsing = false;
+          // this.hasCraftTabBeenResized = false;
           let messages = results['Messages']
           if (messages) {
             this.errorMessageList = messages;
           }
-          let castedResults = results['Results'] as ParsingResults;
+          let castedResults = results as ParsingResults;
           if (castedResults) {
             this.resultsForPage = castedResults;
-            this.pushResultsToDataSources(castedResults);
-            
+            this.pushDataToCharts(castedResults);
+            this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
+            this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
           }
+        },
+        (error: any) => {
+          alert('Error parsing your log file. Please try again. If the problem persists, please contact system admin.');
         }
       )
   }
 
-  pushResultsToDataSources(castedResults) {
-    this.chartData = [{data: castedResults.Combat.ChartData.Values, label:'Total Dmg'}];
-    setTimeout(() => {this.chartLabels = castedResults.Combat.ChartData.Labels;}, 50);
+  pushDataToCharts(castedResults: ParsingResults) {
+    this.dpsChartData = [{data: castedResults.Combat.ChartData.Values, label:'Total Dmg'}];
+    setTimeout(() => {this.dpsChartLabels = castedResults.Combat.ChartData.Labels;}, 50);
 
-    this.craftingSeries = castedResults.Crafting.Series;
-    this.craftingData = castedResults.Crafting.Values;
-  
+    // setTimeout(() => {this.dpsChartData = castedResults.Combat.ChartData;}, 50);
+
+    let tmpData = [];
+    for (var i = 0; i < this.craftingLabels.length; i++) {
+      let series = []
+      for (var x = 0; x < castedResults.Crafting.Series.length; x++) {
+        series.push( {
+          "name": castedResults.Crafting.Series[x],
+          "value": castedResults.Crafting.Values[x][i]
+        })
+      }
+      tmpData.push( {
+        "name": this.craftingLabels[i],
+        "series": series
+      })
+    }
+
+    this.craftingChartData = tmpData;
+
+  }
+
+  checkResultsForCombat(castedResults: ParsingResults) {
+    let hasMelee = castedResults.Combat.MeleeAttack.TotalAttacks > 0;
+    let hasCasting = castedResults.Combat.CasterAttack.TotalAttacks > 0;
+    let hasDefense = castedResults.Combat.Defense.TotalAttacks > 0;
+    let hasHealing = castedResults.Combat.Healing.Delivered > 0
+      || castedResults.Combat.Healing.Received > 0 
+      || castedResults.Combat.Healing.Lifetapped > 0;
+
+    return hasMelee || hasCasting || hasDefense || hasHealing;
+  }
+
+  checkResultsForMoney(castedResults: ParsingResults) {
+    let hasMoneyValue = false;
+    castedResults.PvE.Monies.Loot.forEach(denom => {
+      if (denom) {
+        hasMoneyValue = true;
+      }
+    })
+
+    if (hasMoneyValue) {
+      return true;
+    }
+
+    castedResults.PvE.Monies.Expense.forEach(denom => {
+      if (denom) {
+        hasMoneyValue = true;
+      }
+    })
+
+    if (hasMoneyValue) {
+      return true;
+    }
+
+    castedResults.PvE.Monies.Income.forEach(denom => {
+      if (denom) {
+        hasMoneyValue = true;
+      }
+    })
+
+    return hasMoneyValue;
+
   }
 
   currencyPrintHelper(currency_dict) {
@@ -126,7 +225,12 @@ export class AppComponent implements OnInit{
     return true;
   }
 
-  tabChange(event) {
-    alert('Tab changed')
+  tabChange(event: MatTabChangeEvent) {
+    let tabNum = event.index;
+    console.log(tabNum);
+    if (event.tab.textLabel == 'Crafting') {
+      window.dispatchEvent(new Event('resize'));
+      this.hasCraftTabBeenResized = false;
+    }
   }
 }

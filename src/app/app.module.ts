@@ -4,7 +4,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { HttpModule } from '@angular/http';
 
 import { ChartsModule } from 'ng2-charts';
-
+import {NgxChartsModule} from '@swimlane/ngx-charts';
 import { AccordionModule } from 'ng2-accordion';
 
 import { MatTabsModule } from '@angular/material/tabs';
@@ -26,6 +26,7 @@ import { AppComponent } from './app.component';
     ChartsModule,
     MatExpansionModule,
     MatTabsModule,
+    NgxChartsModule,
     BrowserAnimationsModule,
     HttpModule
   ],

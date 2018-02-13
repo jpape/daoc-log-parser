@@ -1,6 +1,9 @@
 from flask import Flask, request, render_template
 from flask_cors import CORS
-import log_parser
+import json
+import combat_parser
+import pve_parser
+import craft_parser
 
 app = Flask(__name__, static_url_path='', static_folder='dist')
 CORS(app)
@@ -24,11 +27,25 @@ def capture_upload():
     if file.filename == '' or not allowed_file(file.filename):
         return 'No selected file or incorrect file type'
     else:
-        return log_parser.parse_uploaded_file(file)
+        return handle_uploaded_file(file)
 
 
 def handle_uploaded_file(upload):
-    return log_parser.parse_uploaded_file(upload)
+    error_messages = []
+    combat_results = combat_parser.parse_uploaded_file(upload, error_messages)
+    crafting_results = craft_parser.parse_crafting(upload, error_messages)
+    pve_drop_results = pve_parser.parse_pve(upload, error_messages)
+
+    result = {}
+    result['Combat'] = combat_results
+    result['Crafting'] = crafting_results
+    result['PvE'] = pve_drop_results
+
+    result['Messages'] = error_messages
+    j_result = json.dumps(result)
+
+    return j_result
+
 
 
 def allowed_file(filename):

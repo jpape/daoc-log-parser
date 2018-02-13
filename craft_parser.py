@@ -1,6 +1,6 @@
 
 
-def parse_crafting(readf):
+def parse_crafting(readf, error_messages):
     readf.seek(0)
 
     result = {}
@@ -8,58 +8,61 @@ def parse_crafting(readf):
     crafted_items = {}
     crafting_skills = {}
     last_attempted_item = ''
-    for line in readf:
-        if 'You successfully make' in line:
-            # item = get_item_name(line)
-            # quality = get_item_quality(line)
+    try:
+        for line in readf:
+            if 'You successfully make' in line:
+                # item = get_item_name(line)
+                # quality = get_item_quality(line)
 
-            item, quality = get_item_and_quality(line)
-            if item not in crafted_items.keys():
-                crafted_items[item] = CraftItem()
+                item, quality = get_item_and_quality(line)
+                if item not in crafted_items.keys():
+                    crafted_items[item] = CraftItem()
 
-            crafted_items[item].qualities[quality] += 1
+                crafted_items[item].qualities[quality] += 1
+                
+                last_attempted_item = ''
+                losing_items = False
             
-            last_attempted_item = ''
-            losing_items = False
-        
-        elif 'but lose no materials' in line:
-            item = get_item_name(line)
+            elif 'but lose no materials' in line:
+                item = get_item_name(line)
 
-            if item not in crafted_items.keys():
-                crafted_items[item] = CraftItem()
+                if item not in crafted_items.keys():
+                    crafted_items[item] = CraftItem()
 
-            crafted_items[item].fails += 1
+                crafted_items[item].fails += 1
 
-            last_attempted_item = ''
-            losing_items = False
-        
-        elif 'and lose some materials' in line:
-            item = get_item_name(line)
-
-            if item not in crafted_items.keys():
-                crafted_items[item] = CraftItem()
-
-            crafted_items[item].fails += 1
-
-            last_attempted_item = item
-            losing_items = True
-        
-        elif 'You lose' in line and losing_items and last_attempted_item != '':
-            material, amount = get_material_name_and_count(line)
-            if material not in crafted_items[last_attempted_item].lost_materials.keys():
-                crafted_items[last_attempted_item].lost_materials[material] = 0
+                last_attempted_item = ''
+                losing_items = False
             
-            crafted_items[last_attempted_item].lost_materials[material] += amount
+            elif 'and lose some materials' in line:
+                item = get_item_name(line)
 
-        elif 'You gain skill' in line:
-            skill, level = get_skill_and_level(line)
-            if skill not in crafting_skills.keys():
-                crafting_skills[skill] = 0
+                if item not in crafted_items.keys():
+                    crafted_items[item] = CraftItem()
 
-            crafting_skills[skill] += 1
-        
-        else:
-            losing_items = False
+                crafted_items[item].fails += 1
+
+                last_attempted_item = item
+                losing_items = True
+            
+            elif 'You lose' in line and losing_items and last_attempted_item != '':
+                material, amount = get_material_name_and_count(line)
+                if material not in crafted_items[last_attempted_item].lost_materials.keys():
+                    crafted_items[last_attempted_item].lost_materials[material] = 0
+                
+                crafted_items[last_attempted_item].lost_materials[material] += amount
+
+            elif 'You gain skill' in line:
+                skill, level = get_skill_and_level(line)
+                if skill not in crafting_skills.keys():
+                    crafting_skills[skill] = 0
+
+                crafting_skills[skill] += 1
+            
+            else:
+                losing_items = False
+    except Exception:
+        error_messages.append('Error while parsing crafting')
 
     result['Series'] = []
     result['Values'] = []
