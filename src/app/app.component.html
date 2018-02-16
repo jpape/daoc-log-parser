@@ -14,141 +14,140 @@
                 <li>This causes all text to be output to a file named 'chat.log', which by default is located at 'C:/Documents/Electronic
                     Arts/Dark Age of Camelot</li>
             </ul>
-            <li>You can write to a differently named file by using '/chatlog [name]'</li>
+            <li>You can write to a differently named file by using '/chatlog [name]' (Replace [name] with whatever you want to name the file)</li>
             <ul>
                 <li>If the file [name].log exists, the game will open the file and append your chatlog to the end of it.</li>
                 <li>If the file [name].log doesn't exist, the game will create it for you</li>
             </ul>
-            <li>Quitting, going link-dead, or typing /chatlog again will turn off the logging.</li>
+            <li>Quitting to character screen, going link-dead, or typing /chatlog again will turn off the logging.</li>
         </ol>
     </div>
 
-    <mat-tab-group (selectedTabChange)="tabChange($event)"  *ngIf="resultsForPage">
-        <mat-tab label="Combat" *ngIf="resultsIncludeCombat">
+    <mat-tab-group (selectedTabChange)="tabChange($event)" *ngIf="resultsForPage">
+        <mat-tab label="Combat" [disabled]="!resultsIncludeCombat">
             <mat-accordion multi="true" hideToggle="true">
                 <div class="container-fluid">
                     <div class="panel-group">
-                        <mat-expansion-panel id="healing-summary">
+                        <mat-expansion-panel id="healing-rvr" *ngIf="resultsIncludeRvr">
                             <mat-expansion-panel-header>
                                 <h4>Summary</h4>
                             </mat-expansion-panel-header>
-                            <div class="row panel-default panel">
-                                <div class="panel-body">
-                                    <div class="col-xs-2" id="healing-summary" *ngIf="resultsForPage.Combat.Healing.Delivered || resultsForPage.Combat.Healing.Received || resultsForPage.Combat.Healing.Lifetapped">
-                                        <h4>Healing</h4>
-                                        <table style="border-top:1px solid black;">
-                                            <tr *ngIf="resultsForPage.Combat.Healing.Delivered">
-                                                <td>
-                                                    <strong>Delivered:</strong>
-                                                </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Healing.Delivered | number}}</td>
+                            <div class="row panel-default panel" *ngIf="resultsForPage.Combat.Healing.Delivered || resultsForPage.Combat.Healing.Received || resultsForPage.Combat.Healing.Lifetapped">
+                                <div class="col-xs-2" id="healing-summary">
+                                    <h4>Healing</h4>
+                                    <table style="border-top:1px solid black;">
+                                        <tr *ngIf="resultsForPage.Combat.Healing.Delivered">
+                                            <td>
+                                                <strong>Delivered:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Healing.Delivered | number}}</td>
+                                        </tr>
+                                        <tr *ngIf="resultsForPage.Combat.Healing.Received">
+                                            <td>
+                                                <strong>Received:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Healing.Received | number}}</td>
+                                        </tr>
+                                        <tr *ngIf="resultsForPage.Combat.Healing.Lifetapped">
+                                            <td>
+                                                <strong>Lifetapped:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Healing.Lifetapped | number}}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-xs-3" id="healing-delivered" *ngIf="resultsForPage.Combat.Healing.Targets.length">
+                                    <thead>
+                                        <strong>Delivered breakdown:</strong>
+                                    </thead>
+                                    <div class="scrollTable">
+                                        <table class="table-striped greenStriped">
+                                            <tr>
+                                                <th></th>
+                                                <th style="text-align:center">Count</th>
+                                                <th style="text-align:center">Total</th>
+                                                <th style="text-align:center">Max</th>
                                             </tr>
-                                            <tr *ngIf="resultsForPage.Combat.Healing.Received">
+                                            <tr *ngFor="let target of resultsForPage.Combat.Healing.Targets">
                                                 <td>
-                                                    <strong>Received:</strong>
+                                                    {{target[0]}}
+                                                    <a *ngIf="checkIfNameIsPlayer(target[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{target[0]}}"
+                                                        target="_blank"> (herald)</a>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Healing.Received | number}}</td>
-                                            </tr>
-                                            <tr *ngIf="resultsForPage.Combat.Healing.Lifetapped">
-                                                <td>
-                                                    <strong>Lifetapped:</strong>
-                                                </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Healing.Lifetapped | number}}</td>
+                                                <td style="text-align:center">{{target[1] | number}}</td>
+                                                <td style="text-align:center">{{target[2] | number}}</td>
+                                                <td style="text-align:center">{{target[3] | number}}</td>
                                             </tr>
                                         </table>
-                                        <br/>
-                                        <div *ngIf="resultsForPage.Combat.Healing.Targets.length">
-                                            <thead>
-                                                <strong>Delivered breakdown:</strong>
-                                            </thead>
-                                            <div class="scrollTable">
-                                                <table class="table-striped greenStriped">
-                                                    <tr>
-                                                        <th></th>
-                                                        <th style="text-align:center">Count</th>
-                                                        <th style="text-align:center">Total</th>
-                                                        <th style="text-align:center">Max</th>
-                                                    </tr>
-                                                    <tr *ngFor="let target of resultsForPage.Combat.Healing.Targets">
-                                                        <td>
-                                                            {{target[0]}}
-                                                            <a *ngIf="checkIfNameIsPlayer(target[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{target[0]}}"
-                                                                target="_blank"> (herald)</a>
-                                                        </td>
-                                                        <td style="text-align:center">{{target[1] | number}}</td>
-                                                        <td style="text-align:center">{{target[2] | number}}</td>
-                                                        <td style="text-align:center">{{target[3] | number}}</td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <br/>
-                                        <div *ngIf="resultsForPage.Combat.Healing.Sources.length">
-                                            <thead>
-                                                <strong>Received breakdown:</strong>
-                                            </thead>
-                                            <div class="scrollTable">
-                                                <table class="table-striped greenStriped">
-                                                    <tr>
-                                                        <th></th>
-                                                        <th style="text-align:center">Count</th>
-                                                        <th style="text-align:center">Total</th>
-                                                        <th style="text-align:center">Max</th>
-                                                    </tr>
-                                                    <tr *ngFor="let source of resultsForPage.Combat.Healing.Sources">
-                                                        <td>
-                                                            {{source[0]}}
-                                                            <a *ngIf="checkIfNameIsPlayer(source[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{source[0]}}"
-                                                                target="_blank"> (herald)</a>
-                                                        </td>
-                                                        <td style="text-align:center">{{source[1] | number}}</td>
-                                                        <td style="text-align:center">{{source[2] | number}}</td>
-                                                        <td style="text-align:center">{{source[3] | number}}</td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-                                        </div>
                                     </div>
-                                    <div class="col-xs-2" id="rvr-summary" *ngIf="resultsForPage.Combat.Summary.RPs || resultsForPage.Combat.Summary.Deaths">
-                                        <h4>RvR</h4>
-                                        <table style="border-top:1px solid black;">
+                                </div>
+                                <div class="col-xs-3" id="healing-received" *ngIf="resultsForPage.Combat.Healing.Sources.length">
+                                    <thead>
+                                        <strong>Received breakdown:</strong>
+                                    </thead>
+                                    <div class="scrollTable">
+                                        <table class="table-striped greenStriped">
                                             <tr>
-                                                <td>
-                                                    <strong>Deaths:</strong>
-                                                </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Summary.Deaths | number}}</td>
+                                                <th></th>
+                                                <th style="text-align:center">Count</th>
+                                                <th style="text-align:center">Total</th>
+                                                <th style="text-align:center">Max</th>
                                             </tr>
-                                            <tr>
+                                            <tr *ngFor="let source of resultsForPage.Combat.Healing.Sources">
                                                 <td>
-                                                    <strong>RPs:</strong>
+                                                    {{source[0]}}
+                                                    <a *ngIf="checkIfNameIsPlayer(source[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{source[0]}}"
+                                                        target="_blank"> (herald)</a>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Summary.RPs | number}}</td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <strong>Deathblows:</strong>
-                                                </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Summary.DeathblowCount | number}}</td>
+                                                <td style="text-align:center">{{source[1] | number}}</td>
+                                                <td style="text-align:center">{{source[2] | number}}</td>
+                                                <td style="text-align:center">{{source[3] | number}}</td>
                                             </tr>
                                         </table>
-                                        <br/>
-                                        <thead>
-                                            <strong>Deathblow list:</strong>
-                                        </thead>
-                                        <div class="scrollTable" id="deathblow-list" style="max-height:140px">
-                                            <table class="table-striped greenStriped">
-                                                <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
-                                                    <td>
-                                                        {{db[0]}}
-                                                        <a *ngIf="checkIfNameIsPlayer(db[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{db[0]}}"
-                                                            target="_blank"> (herald)</a>
-                                                    </td>
-                                                    <td style="text-align:center">{{db[1] | number}}</td>
-                                                </tr>
-                                            </table>
-                                        </div>
                                     </div>
-                                    
+                                </div>
+                            </div>
+                            <br/>
+                            <div class="row panel-default panel" *ngIf="resultsForPage.Combat.Summary.RPs || resultsForPage.Combat.Summary.Deaths">
+                                <div class="col-xs-2" id="rvr-summary">
+                                    <h4>RvR</h4>
+                                    <table style="border-top:1px solid black;">
+                                        <tr>
+                                            <td>
+                                                <strong>Deaths:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Summary.Deaths | number}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>RPs:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Summary.RPs | number}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>Deathblows:</strong>
+                                            </td>
+                                            <td style="text-align:center">{{resultsForPage.Combat.Summary.DeathblowCount | number}}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-xs-2" *ngIf="resultsForPage.Combat.Summary.DeathblowCount > 0">
+                                    <thead>
+                                        <strong>Deathblow list:</strong>
+                                    </thead>
+                                    <div class="scrollTable" id="deathblow-list" style="max-height:140px">
+                                        <table class="table-striped greenStriped">
+                                            <tr *ngFor="let db of resultsForPage.Combat.Summary.DeathBlows">
+                                                <td>
+                                                    {{db[0]}}
+                                                    <a *ngIf="checkIfNameIsPlayer(db[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{db[0]}}"
+                                                        target="_blank"> (herald)</a>
+                                                </td>
+                                                <td style="text-align:center">{{db[1] | number}}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </mat-expansion-panel>
@@ -281,7 +280,7 @@
                                             <h4>
                                                 <strong>Targets:</strong>
                                             </h4>
-                                            <div class="scrollTable" style="max-height:280px">
+                                            <div class="scrollTable" style="max-height:200px">
                                                 <table class="table-striped greenStriped">
                                                     <tr>
                                                         <th></th>
@@ -502,9 +501,7 @@
                             </div>
                             <br/>
                             <div class="row panel panel-default" *ngIf="resultsForPage.Combat.CasterAttack.TotalAttacks || resultsForPage.Combat.MeleeAttack.TotalAttacks">
-                                <!-- <mat-expansion-panel-header> -->
-                                    <h4 class="panel-heading">DPS Graph</h4>
-                                <!-- </mat-expansion-panel-header> -->
+                                <h4 class="panel-heading">DPS Graph</h4>
                                 <div class="col-md-12 panel-body">
                                     <div style="display:block;">
                                         <canvas baseChart height="60" [datasets]="dpsChartData" [labels]="dpsChartLabels" [options]="dpsChartOptions" [chartType]="'bar'"
@@ -518,7 +515,6 @@
                                         [showXAxisLabel]="'true'">
                                     </ngx-charts-bar-vertical> -->
                                 </div>
-                            <!-- </mat-expansion-panel> -->
                             </div>
                         </mat-expansion-panel>
                         <mat-expansion-panel id="defense">
@@ -715,20 +711,40 @@
                         </div>
                     </div>
                 </div>
+                <!-- <div class="example-container mat-elevation-z8">
+                    <mat-table #table [dataSource]="matTableTest">
+                        <ng-container matColumnDef="name">
+                            <mat-header-cell *matHeaderCellDef></mat-header-cell>
+                            <mat-cell *matCellDef="let target">{{target[0]}}</mat-cell>
+                        </ng-container>
+                        <ng-container matColumnDef="hits">
+                            <mat-header-cell *matHeaderCellDef>Hits</mat-header-cell>
+                            <mat-cell *matCellDef="let target">{{target[1]}}</mat-cell>
+                        </ng-container>
+                        <ng-container matColumnDef="blocks">
+                            <mat-header-cell *matHeaderCellDef>Blocks</mat-header-cell>
+                            <mat-cell *matCellDef="let target">{{target[2]}}</mat-cell>
+                        </ng-container>
+
+                        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+                        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+                    </mat-table>
+                </div> -->
+                <!-- <div class="example-container mat-elevation-z8">
+                    <mat-table #table [dataSource]="matTableTest">
+                        <ng-container matColumnDef="{{header}}" *ngFor="let header of displayedColumns; let i = index">
+                            <mat-header-cell *matHeaderCellDef>{{header}}</mat-header-cell>
+                            <mat-cell *matCellDef="let target">{{target[i] | number}}</mat-cell>
+                        </ng-container>
+
+
+                        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+                        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+                    </mat-table>
+                </div> -->
             </mat-accordion>
         </mat-tab>
-        <mat-tab label="Crafting" *ngIf="resultsForPage.Crafting.Series.length > 0">
-            <ngx-charts-bar-vertical-2d
-                [results]="craftingChartData"
-                [legend]="'true'"
-                [legendTitle]="'Items'"
-                [yAxis]="'true'"
-                [xAxis]="'true'"
-                [groupPadding]="12"
-                [showXAxisLabel]="'true'">
-            </ngx-charts-bar-vertical-2d>
-        </mat-tab>
-        <mat-tab label="Money & Loot" *ngIf="resultsForPage.PvE.Drops.length > 0 || resultsIncludeMoney">
+        <mat-tab label="Money & Loot" [disabled]="(resultsForPage.PvE.Drops.length == 0 && !resultsIncludeMoney)">
             <div class="row" *ngIf="resultsIncludeMoney">
                 <div class="col-xs-2" id="money-summary">
                     <h4>Money</h4>
@@ -756,31 +772,59 @@
             </div>
             <br/>
             <br/>
-            <div class="row" *ngFor="let mobs of resultsForPage.PvE.Drops">
+            <div class="row">
                 <div class="container-fluid">
-                    <div class="col-sm-4 panel-default panel">
+                    <div class="col-sm-3 panel-default panel" *ngFor="let mobs of resultsForPage.PvE.Drops">
                         <h4 class="panel-header">{{mobs[0]}} (Kills: {{mobs[1]}})</h4>
                         <table class="table-striped bluestriped panel-body">
                             <tr>
                                 <th>Item</th>
-                                <th>Drop count</th>
-                                <th>Drop Rate</th>
+                                <th style="text-align: center">Count</th>
+                                <th style="text-align: center">Rate</th>
                             </tr>
                             <tr *ngFor="let drop of mobs[2]">
-                                <td>
-                                    {{drop[0]}}
-                                </td>
-                                <td>
-                                    {{drop[1]}}
-                                </td>
-                                <td>
-                                    {{drop[1]/mobs[1] | percent:'.0-0'}}
-                                </td>
+                                <td>{{drop[0]}}</td>
+                                <td style="text-align: center">{{drop[1]}}</td>
+                                <td style="text-align: center">{{drop[1]/mobs[1] | percent:'.0-0'}}</td>
                             </tr>
                         </table>
                     </div>
                 </div>
             </div>
+        </mat-tab>
+        <!-- <mat-tab label="Log File">
+            <textarea class="panel panel-default" readonly="true" style="width:100%; height:700px">
+                {{fileText}}
+            </textarea>
+        </mat-tab> -->
+        <mat-tab label="XP" [disabled]="resultsForPage.PvE.XP.length == 0">
+            <!-- <ngx-charts-area-chart-stacked
+                [results]="xpChartData" 
+                [yAxis]="'true'"
+                [xAxis]="'true'"
+                [legend]="'true'"
+                [scheme]="xpChartColors">
+            </ngx-charts-area-chart-stacked> -->
+            <ngx-charts-bar-vertical-stacked
+                [results]="xpChartData" 
+                [yAxis]="'true'"
+                [xAxis]="xpShowXAxis"
+                [legend]="'true'"
+                [scheme]="xpChartColors"
+                [barPadding]="1">
+            </ngx-charts-bar-vertical-stacked>
+        </mat-tab>
+        <mat-tab label="Crafting" [disabled]="resultsForPage.Crafting.Series.length == 0">
+            <ngx-charts-bar-vertical-2d 
+                [results]="craftingChartData" 
+                [legend]="'true'"
+                [legendTitle]="'Items'"
+                [yAxis]="'true'"
+                [xAxis]="'true'"
+                [groupPadding]="12"
+                [barPadding]="1"
+                [showXAxisLabel]="'true'">
+            </ngx-charts-bar-vertical-2d>
         </mat-tab>
     </mat-tab-group>
 

@@ -5,7 +5,6 @@ import { HttpModule } from '@angular/http';
 
 import { ChartsModule } from 'ng2-charts';
 import {NgxChartsModule} from '@swimlane/ngx-charts';
-import { AccordionModule } from 'ng2-accordion';
 
 import { MatTabsModule } from '@angular/material/tabs';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -13,6 +12,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 import { ServicesModule } from './services/services.module'
 import { AppComponent } from './app.component';
+import { MatTab } from '@angular/material/tabs/typings/tab';
 
 @NgModule({
   declarations: [

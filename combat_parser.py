@@ -12,7 +12,6 @@ import craft_parser
 CHAT_MESSAGE_INDICATOR = "@@"
 
 
-
 #region Attack Messages
 MELEE_OFFENSE_ATTACK_MESSAGE = 'You attack'
 MELEE_OFFENSE_WEAPON_ATTACK_MESSAGE = 'with your'
@@ -111,16 +110,17 @@ LIFETAP_HEALTH_STOLEN_MESSAGE = 'You steal'
 #region Combat
 def parse_combat(readf, error_messages):
     """Parses attack and defense values"""
-    combat = {}
 
     timestamp_dict = {}
     readf.seek(0)
     for line in readf:
-        if line.split():
-            if line.split()[0] not in timestamp_dict.keys():
-                timestamp_dict[line.split()[0]] = []
+        ts_split = line.split()
+        if ts_split:
+            ts = ts_split[0].replace('[', '').replace(']', '')
+            if ts not in timestamp_dict.keys():
+                timestamp_dict[ts] = []
 
-            timestamp_dict[line.split()[0]].append(line)
+            timestamp_dict[ts].append(line)
 
     melee_events = []
     spell_events = []
@@ -137,6 +137,7 @@ def parse_combat(readf, error_messages):
             if mel_events is not None:
                 melee_events.extend(mel_events)
 
+    combat = {}
     combat['MeleeAttack'] = aggregate_melee_events(melee_events)
     combat['CasterAttack'] = aggregate_spell_events(spell_events)
     combat['Defense'] = parse_defense_combat(readf, error_messages)

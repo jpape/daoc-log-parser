@@ -32,20 +32,15 @@ def capture_upload():
 
 def handle_uploaded_file(upload):
     error_messages = []
-    combat_results = combat_parser.parse_uploaded_file(upload, error_messages)
-    crafting_results = craft_parser.parse_crafting(upload, error_messages)
-    pve_drop_results = pve_parser.parse_pve(upload, error_messages)
-
     result = {}
-    result['Combat'] = combat_results
-    result['Crafting'] = crafting_results
-    result['PvE'] = pve_drop_results
+    result['Combat'] = combat_parser.parse_uploaded_file(upload, error_messages)
+    result['Crafting'] = craft_parser.parse_crafting(upload, error_messages)
+    result['PvE'] = pve_parser.parse_pve(upload, error_messages)
 
     result['Messages'] = error_messages
     j_result = json.dumps(result)
 
     return j_result
-
 
 
 def allowed_file(filename):

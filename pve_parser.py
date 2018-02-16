@@ -16,6 +16,7 @@ def parse_pve(readf, error_messages):
     result = {}
     result['Monies'] = parse_cash_flow(readf, error_messages)
     result['Drops'] = parse_loot(readf, error_messages)
+    result['XP'] = parse_xp(readf, error_messages)
 
     return result
 
@@ -112,6 +113,244 @@ def currency_breakdown(total):
 
 #endregion
 
+
+def parse_xp(readf, error_messages, inject_non_xp_timestamps=False, using_stacked_area=False):
+    readf.seek(0)
+
+    experience_timestamps = {}
+    nonLocal = NonLocal()
+
+    xp_timestamp = ''
+
+    for line in readf:
+        if len(line.split()) == 0:
+            continue
+
+        this_timestamp = line.split()[0].replace('[', '').replace(']', '')
+
+        if this_timestamp != xp_timestamp and nonLocal.xp_earn is not None:
+            if nonLocal.xp_earn.base_xp < 0:
+                nonLocal.xp_earn.base_xp = 0
+            experience_timestamps[xp_timestamp] = nonLocal.xp_earn
+            nonLocal.xp_earn = None
+            xp_timestamp = ''
+
+        if 'experience points' in line:
+            xp_timestamp = this_timestamp
+            if nonLocal.xp_earn is None:
+                nonLocal.xp_earn = ExperienceEarn()
+
+
+            xp_amount = int(line.split()[3].replace(',', ''))
+            if 'extra' not in line:
+                nonLocal.xp_earn.base_xp += xp_amount
+            else:
+                nonLocal.xp_earn.extra_xp += xp_amount
+
+        if 'camp bonus' in line:
+            xp_timestamp = this_timestamp
+            if nonLocal.xp_earn is None:
+                nonLocal.xp_earn = ExperienceEarn()
+
+            try:
+                c_xp = int(line.split()[5].replace('points.(', '').replace(',', '').replace('(', ''))
+            except ValueError:
+                c_xp = int(line.split()[6].replace('points.(', '').replace(',', '').replace('(', ''))
+            nonLocal.xp_earn.camp_xp += c_xp
+            nonLocal.xp_earn.base_xp -= c_xp
+        
+        if 'group bonus' in line:
+            xp_timestamp = this_timestamp
+            if nonLocal.xp_earn is None:
+                nonLocal.xp_earn = ExperienceEarn()
+
+            split_line = line.split()
+            g_xp = int(split_line[split_line.index('group')-1].replace(',', '').replace('(', ''))
+            nonLocal.xp_earn.group_xp += g_xp
+            nonLocal.xp_earn.base_xp -= g_xp
+        
+        if 'bonus experience' in line:
+            xp_timestamp = this_timestamp
+            if nonLocal.xp_earn is None:
+                nonLocal.xp_earn = ExperienceEarn()
+
+            b_xp = int(line.split()[3].replace(',', ''))
+
+            if 'for adventuring in this area' in line:
+                nonLocal.xp_earn.zone_xp += b_xp
+            elif 'from realm outpost ownership!' in line:
+                nonLocal.xp_earn.keep_xp += b_xp
+            else:
+                nonLocal.xp_earn.bonus_xp += b_xp
+            nonLocal.xp_earn.base_xp -= b_xp
+
+        if 'over cap' in line:
+            xp_timestamp = this_timestamp
+            if nonLocal.xp_earn is None:
+                nonLocal.xp_earn = ExperienceEarn()
+            
+            split_line = line.split()
+            oc_xp = int(split_line[split_line.index('over')-1].replace(',', '').replace('(', ''))
+            nonLocal.xp_earn.over_cap += oc_xp
+            nonLocal.xp_earn.base_xp -= oc_xp
+
+
+    if inject_non_xp_timestamps and experience_timestamps.keys():
+        from datetime import datetime, timedelta
+
+        max_ts = datetime.strptime(max(experience_timestamps.keys()), '%H:%M:%S')
+        min_ts = datetime.strptime(min(experience_timestamps.keys()), '%H:%M:%S')
+        total_time = max_ts - min_ts
+        for second in range(int(total_time.total_seconds())):
+            next_ts = datetime.strftime(min_ts + timedelta(seconds=second), '%H:%M:%S')
+            if next_ts not in experience_timestamps.keys():
+                experience_timestamps[next_ts] = ExperienceEarn()
+
+    sorted_xp_list = sorted(experience_timestamps.items(), key=operator.itemgetter(0))
+
+    if using_stacked_area:
+        return manip_dict_to_stacked_chart(sorted_xp_list)
+
+    return manip_dict_to_chart_data(sorted_xp_list)
+
+
+def manip_dict_to_stacked_chart(xp_timestamps):
+    result = []
+    
+    base_series = []
+    camp_series = []
+    zone_series = []
+    group_series = []
+    bonus_series = []
+    extra_series = []
+    keep_series = []
+    overcap_series = []
+
+    for ts in xp_timestamps:
+        xp= ts[1]
+        
+        base_series.append({
+            "name":ts[0],
+            "value":xp.base_xp
+        })
+        camp_series.append({
+            "name":ts[0],
+            "value":xp.camp_xp
+        })
+        zone_series.append({
+            "name":ts[0],
+            "value":xp.zone_xp
+        })
+        group_series.append({
+            "name":ts[0],
+            "value":xp.group_xp
+        })
+        bonus_series.append({
+            "name":ts[0],
+            "value":xp.bonus_xp
+        })
+        extra_series.append({
+            "name":ts[0],
+            "value":xp.extra_xp
+        })
+        keep_series.append({
+            "name":ts[0],
+            "value":xp.keep_xp
+        })
+        overcap_series.append({
+            "name":ts[0],
+            "value":xp.over_cap
+        })
+
+    regions = ['Base', 'Camp', 'Zone', 'Group', 'Bonus', 'Extra', 'Keep', 'OverCap']
+    series = [base_series, camp_series, zone_series, group_series, bonus_series, extra_series, keep_series, overcap_series]
+
+    for x in range(len(regions)):
+        result.append({
+            'name':regions[x],
+            'series':series[x]
+        })
+
+    return result
+
+
+
+def manip_dict_to_chart_data(xp_timestamps):
+    result = []
+
+    for ts in xp_timestamps:
+        series = []
+        xp = ts[1]
+
+        # if xp.base_xp > 0:
+        series.append(
+            {
+                "name":"Base",
+                "value":xp.base_xp
+            }
+        )
+        # if xp.camp_xp > 0:
+        series.append(
+            {
+                "name":"Camp",
+                "value":xp.camp_xp
+            }
+        )
+        # if xp.zone_xp > 0:
+        series.append(
+            {
+                "name":"Zone",
+                "value":xp.zone_xp
+            }
+        )
+        # if xp.group_xp > 0:
+        series.append(
+            {
+                "name":"Group",
+                "value":xp.group_xp
+            }
+        )
+        # if xp.bonus_xp > 0:
+        series.append(
+            {
+                "name":"Bonus",
+                "value":xp.bonus_xp
+            }
+        )
+        # if xp.extra_xp > 0:
+        series.append(
+            {
+                "name":"Extra",
+                "value":xp.extra_xp
+            }
+        )
+        # if xp.keep_xp > 0:
+        series.append(
+            {
+                "name":"Keep",
+                "value":xp.keep_xp
+            }
+        )
+        # if xp.over_cap > 0:
+        series.append(
+            {
+                "name":"OverCap",
+                "value":xp.over_cap
+            }
+        )
+
+        result.append({
+            "name":ts[0],
+            "series":series
+        })
+
+    return result
+
+
+
+class NonLocal(object):
+    xp_earn = None
+
 class MobDropList(object):
     def __init__(self):
         self._deaths = 0
@@ -138,11 +377,25 @@ class MobDropList(object):
     def get_all_stats(self):
         return self._deaths, self.get_drops()
 
+class ExperienceEarn(object):
+    def __init__(self):
+        self.base_xp = 0
+        self.camp_xp = 0
+        self.zone_xp = 0
+        self.group_xp = 0
+        self.bonus_xp = 0
+        self.extra_xp = 0
+        self.keep_xp = 0
+        self.over_cap = 0
+
+    def get_total_xp(self):
+        return self.base_xp + self.camp_xp + self.zone_xp + self.bonus_xp \
+            + self.extra_xp + self.group_xp + self.keep_xp
 
 
 def test_parse():
     with open('C:/Git/Daoc_log_parse/Log Files/spindel915.log', 'r') as readf:
-        res = parse_pve(readf, [])
+        res = parse_xp(readf, [])
 
         print(res)
 

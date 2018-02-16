@@ -11,7 +11,8 @@ export class ParsingResults {
         },
         public PvE: {
             Monies: CashResults,
-            Drops: any[][]
+            Drops: any[][],
+            XP: any[]
         }
     ) { }
 }

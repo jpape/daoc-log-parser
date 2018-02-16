@@ -1,10 +1,10 @@
 import { Component, OnInit, Input, HostListener } from '@angular/core';
-import { FormsModule, FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
-import { FileDropModule, UploadFile, UploadEvent } from 'ngx-file-drop';
 import { ParserService } from './services/parser.service';
 
 import { ParsingResults } from '../models/parse-results.model';
 import { MatTabChangeEvent } from '@angular/material/tabs';
+import { containerEnd } from '@angular/core/src/render3/instructions';
+import { MatTableDataSource } from '@angular/material/table';
 
 
 
@@ -18,7 +18,6 @@ export class AppComponent implements OnInit{
   @Input() fileExt: string = "TXT, LOG";
 
   constructor(
-    private formBuilder: FormBuilder,
     private parserService: ParserService
   ) {}
 
@@ -26,7 +25,7 @@ export class AppComponent implements OnInit{
 
 
 
-  dpsChartData:Array<any> = [  ];
+  dpsChartData:Array<any> = [];
   dpsChartLabels:Array<any> = []
   dpsChartOptions:any = {
     scaleShowVerticalLines: true,
@@ -43,8 +42,6 @@ export class AppComponent implements OnInit{
     }
   ]
   dpsLegend: boolean = false;
-
-  // dpsChartData: any[];
 
   tmpCraftingResultsData = [
     {
@@ -84,8 +81,15 @@ export class AppComponent implements OnInit{
   ]
 
   craftingChartData: any[] = [];
-  craftingData: Array<any> = [  ];
   craftingLabels:Array<any> = ['Fail', '94', '95', '96', '97', '98', '99', '100'];
+
+
+  xpChartData: any[] = []
+  xpChartColors = {
+    domain: ['#156489','#b57506','#dd8e07','#f8ac29','#fac364','#fbd491','#fde5bd','#dc0d0e']
+  }
+  xpShowXAxis = true;
+
 
   errorMessageList = []
   isParsing = false;
@@ -94,45 +98,59 @@ export class AppComponent implements OnInit{
 
   resultsIncludeCombat = false;
   resultsIncludeMoney = false;
+  resultsIncludeRvr = false;
 
+  fileText = '';
 
   ngOnInit() {
   }
 
 
   fileSelected(event) {
-    this.isParsing = true;
-    this.hasCraftTabBeenResized = true;
     let fileList: FileList = event.target.files;
-    let file = fileList[0];
-    this.parserService.sendFileToParse(file)
-      .subscribe(
-        (results: any) => {
-          this.isParsing = false;
-          // this.hasCraftTabBeenResized = false;
-          let messages = results['Messages']
-          if (messages) {
-            this.errorMessageList = messages;
+    if (fileList.length > 0) {
+      this.isParsing = true;
+      let file = fileList[0];
+      this.parserService.sendFileToParse(file)
+        .subscribe(
+          (results: any) => {
+            this.isParsing = false;
+            let messages = results['Messages']
+            if (messages) {
+              this.errorMessageList = messages;
+            }
+            let castedResults = results as ParsingResults;
+            if (castedResults) {
+              this.resultsForPage = castedResults;
+              this.pushDataToCharts(castedResults);
+              this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
+              this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
+              this.resultsIncludeRvr = this.checkResultsForRvr(castedResults);
+              // this.loadFileToTextArea(file);
+            }
+          },
+          (error: any) => {
+            alert('Error parsing your log file. Please try again. If the problem persists, please contact system admin.');
+            this.isParsing = false;
+            this.resultsForPage = null;
           }
-          let castedResults = results as ParsingResults;
-          if (castedResults) {
-            this.resultsForPage = castedResults;
-            this.pushDataToCharts(castedResults);
-            this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
-            this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
-          }
-        },
-        (error: any) => {
-          alert('Error parsing your log file. Please try again. If the problem persists, please contact system admin.');
-        }
-      )
+        )
+      }
+    
+  }
+
+  loadFileToTextArea(fileToLoad) {
+    let reader = new FileReader();
+    reader.readAsText(fileToLoad);
+    let me = this;
+    reader.onload = function () {
+      me.fileText = reader.result;
+    }
   }
 
   pushDataToCharts(castedResults: ParsingResults) {
     this.dpsChartData = [{data: castedResults.Combat.ChartData.Values, label:'Total Dmg'}];
     setTimeout(() => {this.dpsChartLabels = castedResults.Combat.ChartData.Labels;}, 50);
-
-    // setTimeout(() => {this.dpsChartData = castedResults.Combat.ChartData;}, 50);
 
     let tmpData = [];
     for (var i = 0; i < this.craftingLabels.length; i++) {
@@ -151,15 +169,16 @@ export class AppComponent implements OnInit{
 
     this.craftingChartData = tmpData;
 
+    this.xpChartData = castedResults.PvE.XP;
+    this.xpShowXAxis = castedResults.PvE.XP.length < 75;
+    console.log(this.xpShowXAxis)
   }
 
   checkResultsForCombat(castedResults: ParsingResults) {
     let hasMelee = castedResults.Combat.MeleeAttack.TotalAttacks > 0;
     let hasCasting = castedResults.Combat.CasterAttack.TotalAttacks > 0;
     let hasDefense = castedResults.Combat.Defense.TotalAttacks > 0;
-    let hasHealing = castedResults.Combat.Healing.Delivered > 0
-      || castedResults.Combat.Healing.Received > 0 
-      || castedResults.Combat.Healing.Lifetapped > 0;
+    let hasHealing = this.checkResultsForRvr(castedResults);
 
     return hasMelee || hasCasting || hasDefense || hasHealing;
   }
@@ -196,6 +215,18 @@ export class AppComponent implements OnInit{
 
   }
 
+  checkResultsForRvr(castedResults: ParsingResults) {
+    let containsHealing = castedResults.Combat.Healing.Delivered > 0
+      || castedResults.Combat.Healing.Received > 0
+      || castedResults.Combat.Healing.Lifetapped > 0;
+
+    let containsDeathRpsKills = castedResults.Combat.Summary.Deaths > 0
+      || castedResults.Combat.Summary.RPs > 0
+      || castedResults.Combat.Summary.DeathblowCount > 0;
+
+    return containsHealing || containsDeathRpsKills;
+  }
+
   currencyPrintHelper(currency_dict) {
     let result_text = '';
     if (currency_dict[0] > 0) {
@@ -226,11 +257,8 @@ export class AppComponent implements OnInit{
   }
 
   tabChange(event: MatTabChangeEvent) {
-    let tabNum = event.index;
-    console.log(tabNum);
-    if (event.tab.textLabel == 'Crafting') {
+    if (event.tab.textLabel == 'Crafting' || event.tab.textLabel == 'XP') {
       window.dispatchEvent(new Event('resize'));
-      this.hasCraftTabBeenResized = false;
     }
   }
 }
