@@ -105,9 +105,6 @@ LIFETAP_HEALTH_STOLEN_MESSAGE = 'You steal'
 
 #endregion
 
-
-
-#region Combat
 def parse_combat(readf, error_messages):
     """Parses attack and defense values"""
 
@@ -122,38 +119,44 @@ def parse_combat(readf, error_messages):
 
             timestamp_dict[ts].append(line)
 
-    melee_events = []
+    physical_events = []
     spell_events = []
     for event_list in timestamp_dict.values():
         event_type = check_timestamp_event_type(event_list)
-        if event_type == 'melee':
-            mel_events, sp_events = parse_melee_attack(event_list, error_messages, True)
-            melee_events.extend(mel_events)
+        if event_type == 'physical':
+            mel_events, sp_events = parse_physical_attack(event_list, error_messages, True)
+            physical_events.extend(mel_events)
             if sp_events is not None:
                 spell_events.extend(sp_events)
         if event_type == 'spell':
             sp_events, mel_events = parse_caster_attack(event_list, error_messages, True)
             spell_events.extend(sp_events)
             if mel_events is not None:
-                melee_events.extend(mel_events)
+                physical_events.extend(mel_events)
 
     combat = {}
-    combat['MeleeAttack'] = aggregate_melee_events(melee_events)
+    combat['PhysicalAttack'] = aggregate_physical_events(physical_events)
     combat['CasterAttack'] = aggregate_spell_events(spell_events)
     combat['Defense'] = parse_defense_combat(readf, error_messages)
     combat['Summary'] = parse_combat_summary(readf, error_messages)
 
-    dps_results = get_chart_data(melee_events, spell_events, timestamp_dict.keys())
-    # combat['ChartData'] = dps_results
+    dps_results = get_chart_data(physical_events, spell_events, timestamp_dict.keys())
     combat['ChartData'] = {
         'Labels': dps_results[0],
         'Values': dps_results[1]
     }
 
+    total_dmg = sum(dps_results[1])
+    tot_secs = len(dps_results[0])
+
+    dps = float(total_dmg) / tot_secs
+
+    combat['DPS'] = dps
+
     return combat
 
 def check_timestamp_event_type(event_list):
-    """For the given event_list, determine whether melee
+    """For the given event_list, determine whether physical
     or spell offensive actions take place"""
     for line in event_list:
         if 'You perform' in line \
@@ -162,7 +165,7 @@ def check_timestamp_event_type(event_list):
         or 'You miss' in line \
         or 'You fumble' in line \
         or 'evades your attack' in line:
-            return 'melee'
+            return 'physical'
         elif 'you cast' in line \
         or 'You hit' in line \
         or 'resists the effect' in line:
@@ -170,7 +173,9 @@ def check_timestamp_event_type(event_list):
 
     return 'no-op'
 
-def parse_melee_attack(events, error_messages, should_recurse):
+
+#region Offense
+def parse_physical_attack(events, error_messages, should_recurse):
     """Counts and returns the # of successful attacks with both hands"""
     is_bladeturned = False
     contains_spell_event = False
@@ -179,7 +184,7 @@ def parse_melee_attack(events, error_messages, should_recurse):
 
     non_local = Nonlocal()
     non_local.mel_event = None
-    event_timestamp = events[0].split()[0]
+    event_timestamp = events[0].split()[0].replace('[', '').replace(']', '')
 
     for line in events:
         if MELEE_STYLE_MESSAGE in line:
@@ -357,8 +362,8 @@ def parse_melee_attack(events, error_messages, should_recurse):
 
     return mel_events, spell_events
 
-def aggregate_melee_events(events_list):
-    """Aggregates melee events into groups for responses"""
+def aggregate_physical_events(events_list):
+    """Aggregates physical events into groups for responses"""
     targets = {}
     weapons = {}
     styles = {}
@@ -384,13 +389,13 @@ def aggregate_melee_events(events_list):
         if event.target != '':
             if event.target not in targets.keys():
                 targets[event.target] = MeleeTarget()
-            targets[event.target].add_melee_event(event)
+            targets[event.target].add_physical_event(event)
 
         # Weapons
         if event.weapon != '':
             if event.weapon not in weapons.keys():
                 weapons[event.weapon] = WeaponStats()
-            weapons[event.weapon].add_melee_event(event)
+            weapons[event.weapon].add_physical_event(event)
 
         # Styles
         if event.block == event.parry == event.evade == \
@@ -399,12 +404,12 @@ def aggregate_melee_events(events_list):
                 event.style = '-unstyled-'
             if event.style not in styles.keys():
                 styles[event.style] = StyleStats()
-            styles[event.style].add_melee_event(event)
+            styles[event.style].add_physical_event(event)
 
 
         if event.timestamp not in timestamps.keys():
             timestamps[event.timestamp] = TimeStats()
-        timestamps[event.timestamp].add_melee_event(event)
+        timestamps[event.timestamp].add_physical_event(event)
 
         if event.damage > 0:
             result['Hits'] += 1
@@ -439,29 +444,11 @@ def aggregate_melee_events(events_list):
     styles_list = dict_to_list(styles)
     result['StyleStats'] = sorted(styles_list, key=operator.itemgetter(5), reverse=True)
 
-    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', \
+    physical_events = ['Hits', 'Blocks', 'Parries', 'Evades', \
         'Misses', 'Crits', 'Fumbles', 'Procs', 'Bladeturns']
-    result = calculate_attack_percents(result, melee_events)
+    result = calculate_attack_percents(result, physical_events)
 
     return result
-
-
-def get_attack_non_hit_target(line, keyword):
-    """Gets the target of an attack that did not land"""
-    split_line = line.split()
-    target = ' '.join(split_line[1:split_line.index(keyword)])
-    target = target.replace('The', '')
-
-    return target
-
-def dict_to_list(dict_to_convert):
-    """Converts a dictionary to a multi-dimensional array. The first item of the
-        tuple is the key from the dictionary"""
-    result_list = []
-    for name, values in dict_to_convert.items():
-        result_list.append([name] + values.get_all_stats())
-
-    return result_list
 
 def parse_caster_attack(events, error_messages, should_recurse):
     """Parses the log file for casting statistics.
@@ -469,11 +456,11 @@ def parse_caster_attack(events, error_messages, should_recurse):
     spell_events = []
     non_local = Nonlocal()
     non_local.spell_event = None
-    event_timestamp = events[0].split()[0]
+    event_timestamp = events[0].split()[0].replace('[', '').replace(']', '')
 
-    contains_melee_event = False
+    contains_physical_event = False
 
-    prev_line_melee = False # This is to keep track of proc vs dd
+    prev_line_physical = False # This is to keep track of proc vs dd
 
     for line in events:
         if 'You cast a' in line:
@@ -490,13 +477,13 @@ def parse_caster_attack(events, error_messages, should_recurse):
             non_local.spell_event.timestamp = event_timestamp
             non_local.spell_event.spell = spell_name
 
-            prev_line_melee = False
+            prev_line_physical = False
 
         elif 'You hit' in line and 'extra damage!' not in line:
             target_weapon_damage = get_target_weapon_and_damage(line, False, False)
 
             # Spell vs Proc: what was the previous line?
-            if prev_line_melee:
+            if prev_line_physical:
                 continue
 
             if non_local.spell_event is not None:
@@ -517,7 +504,7 @@ def parse_caster_attack(events, error_messages, should_recurse):
             non_local.spell_event.damage = target_weapon_damage[2]
 
         elif 'You critical hit for' in line:
-            # If the 4th word is "for" then it is a spell crit, not melee
+            # If the 4th word is "for" then it is a spell crit, not physical
             if line.split()[4] == 'for':
                 target_weapon_damage = get_target_weapon_and_damage(line, False, True)
 
@@ -526,13 +513,13 @@ def parse_caster_attack(events, error_messages, should_recurse):
                 else:
                     non_local.spell_event.crit = target_weapon_damage[2]
 
-                prev_line_melee = False
+                prev_line_physical = False
 
             else:
-                prev_line_melee = True
+                prev_line_physical = True
 
         elif 'resists the effect' in line:
-            if prev_line_melee:
+            if prev_line_physical:
                 continue
 
             split_line = line.split()
@@ -546,7 +533,7 @@ def parse_caster_attack(events, error_messages, should_recurse):
             non_local.spell_event.target = target
             non_local.spell_event.resist = 1
 
-            prev_line_melee = False
+            prev_line_physical = False
 
         elif 'have that effect again' in line \
             or 'you get' in line \
@@ -558,7 +545,7 @@ def parse_caster_attack(events, error_messages, should_recurse):
             or 'already has that effect' in line \
             or 'Spell Failed' in line \
             or 'dies!' in line:
-            prev_line_melee = False
+            prev_line_physical = False
 
             continue
 
@@ -567,10 +554,10 @@ def parse_caster_attack(events, error_messages, should_recurse):
 
         else:
             if 'You attack' in line or 'You perform your' in line:
-                contains_melee_event = True
-                prev_line_melee = True
+                contains_physical_event = True
+                prev_line_physical = True
             else:
-                prev_line_melee = False
+                prev_line_physical = False
             if non_local.spell_event is not None:
                 spell_events.append(non_local.spell_event)
             non_local.spell_event = None
@@ -578,12 +565,12 @@ def parse_caster_attack(events, error_messages, should_recurse):
     if non_local.spell_event is not None:
         spell_events.append(non_local.spell_event)
 
-    if contains_melee_event and should_recurse:
-        melee_events = parse_melee_attack(events, error_messages, False)[0]
+    if contains_physical_event and should_recurse:
+        physical_events = parse_physical_attack(events, error_messages, False)[0]
     else:
-        melee_events = None
+        physical_events = None
 
-    return spell_events, melee_events
+    return spell_events, physical_events
 
 def aggregate_spell_events(events_list):
     """Aggregates list of spell events"""
@@ -645,7 +632,61 @@ def aggregate_spell_events(events_list):
 
     return result
 
+def get_attack_non_hit_target(line, keyword):
+    """Gets the target of an attack that did not land"""
+    split_line = line.split()
+    target = ' '.join(split_line[1:split_line.index(keyword)])
+    target = target.replace('The', '')
 
+    return target
+
+def get_target_weapon_and_damage(line, is_physical, is_crit):
+    """Gets the target of our attack, the weapon we hit them with,
+        and the damage amount. Returns [target, weapon, damage]"""
+    split_line = line.split()
+
+
+    target = ''
+    weapon = ''
+    damage = 0
+    if is_crit:
+        target = ' '.join(split_line[4:split_line.index('for')])
+        weapon = ''
+        damage = int(split_line[split_line.index('additional') +1])
+    else:
+        if is_physical:
+            target = ' '.join(split_line[3:split_line.index('with')])
+            weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])
+        else:
+            target = ' '.join(split_line[3:split_line.index('for')])
+            weapon = ''
+        damage = int(split_line[split_line.index('for') +1])
+
+    target = target.replace('the ', '')
+    weapon = weapon.replace('the ', '')
+
+    return [target, weapon, damage]
+
+def calculate_attack_percents(result, event_list):
+    """Calculates percentages of offensive events"""
+    result['Percents'] = {}
+    for event in event_list:
+        if event == 'Crits' and result[event_list[0]] > 0:
+            result['Percents'][event] = '{0:.2f}'.format(
+                float(result[event])/result[event_list[0]])
+        else:
+            if result['TotalAttacks'] > 0:
+                result['Percents'][event] = '{0:.2f}'.format(
+                    float(result[event])/result['TotalAttacks'])
+            else:
+                result['Percents'][event] = 0
+
+    return result
+
+#endregion
+
+
+#region Defense
 def parse_defense_combat(readf, error_messages):
     """Parses attacks against the player."""
     readf.seek(0)
@@ -734,25 +775,13 @@ def parse_defense_combat(readf, error_messages):
         error_messages.append('CDP: {0}'.format(err))
     return result
 
-def add_defense_non_hit_source(line, sources):
-    """Finds the name of the attacker who failed to hit"""
-    split_line = line.split()
-    source = ' '.join(split_line[1:split_line.index('attacks')])
-
-    source = source.replace('The ', '')
-
-    if source not in sources.keys():
-        sources[source] = DefenseStats()
-
-    return source
-
 def calculate_defense_percents(result):
     """Calculates percentages of defensive events"""
 
     result['Percents'] = {}
 
-    melee_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses']
-    for event in melee_events:
+    physical_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses']
+    for event in physical_events:
         if result['TotalMeleeAttacks'] > 0:
             result['Percents'][event] = '{0:.2f}'.format(
                 float(result[event])/result['TotalMeleeAttacks'])
@@ -769,6 +798,44 @@ def calculate_defense_percents(result):
 
     return result
 
+def get_armor_and_damage(line, sources, is_physical, is_crit):
+    """Gets which piece of armor they hit, and how much damage they did.  \
+        Adds the damage to <sources>, and returns [armor, damage]"""
+    split_line = line.split()
+    if is_crit:
+        source = ' '.join(split_line[1:split_line.index('critical')])
+        damage = int(split_line[split_line.index('additionnal') +1])
+    else:
+        source = ' '.join(split_line[1:split_line.index('hits')])
+        damage = int(split_line[split_line.index('for') +1])
+    armor = ''
+    if is_physical:
+        armor = split_line[split_line.index('your')+1]
+
+    source = source.replace('The ', '')
+
+    if source not in sources.keys():
+        sources[source] = DefenseStats()
+        sources[source].add_damage(damage)
+    else:
+        sources[source].add_damage(damage)
+
+    return [armor, damage]
+
+def add_defense_non_hit_source(line, sources):
+    """Finds the name of the attacker who failed to hit"""
+    split_line = line.split()
+    source = ' '.join(split_line[1:split_line.index('attacks')])
+
+    source = source.replace('The ', '')
+
+    if source not in sources.keys():
+        sources[source] = DefenseStats()
+
+    return source
+#endregion
+
+#region Summary
 def parse_combat_summary(readf, error_messages):
     """Parses RPs, Deathblows, and Deaths"""
     readf.seek(0)
@@ -807,74 +874,8 @@ def parse_combat_summary(readf, error_messages):
     result['DeathBlows'] = sorted(deathblows.items(), key=operator.itemgetter(1), reverse=True)
 
     return result
-
-def calculate_attack_percents(result, event_list):
-    """Calculates percentages of offensive events"""
-    result['Percents'] = {}
-    for event in event_list:
-        if event == 'Crits' and result[event_list[0]] > 0:
-            result['Percents'][event] = '{0:.2f}'.format(
-                float(result[event])/result[event_list[0]])
-        else:
-            if result['TotalAttacks'] > 0:
-                result['Percents'][event] = '{0:.2f}'.format(
-                    float(result[event])/result['TotalAttacks'])
-            else:
-                result['Percents'][event] = 0
-
-    return result
-
-def get_armor_and_damage(line, sources, is_melee, is_crit):
-    """Gets which piece of armor they hit, and how much damage they did.  \
-        Adds the damage to <sources>, and returns [armor, damage]"""
-    split_line = line.split()
-    if is_crit:
-        source = ' '.join(split_line[1:split_line.index('critical')])
-        damage = int(split_line[split_line.index('additionnal') +1])
-    else:
-        source = ' '.join(split_line[1:split_line.index('hits')])
-        damage = int(split_line[split_line.index('for') +1])
-    armor = ''
-    if is_melee:
-        armor = split_line[split_line.index('your')+1]
-
-    source = source.replace('The ', '')
-
-    if source not in sources.keys():
-        sources[source] = DefenseStats()
-        sources[source].add_damage(damage)
-    else:
-        sources[source].add_damage(damage)
-
-    return [armor, damage]
-
-def get_target_weapon_and_damage(line, is_melee, is_crit):
-    """Gets the target of our attack, the weapon we hit them with,
-        and the damage amount. Returns [target, weapon, damage]"""
-    split_line = line.split()
-
-
-    target = ''
-    weapon = ''
-    damage = 0
-    if is_crit:
-        target = ' '.join(split_line[4:split_line.index('for')])
-        weapon = ''
-        damage = int(split_line[split_line.index('additional') +1])
-    else:
-        if is_melee:
-            target = ' '.join(split_line[3:split_line.index('with')])
-            weapon = ' '.join(split_line[split_line.index('your')+1:split_line.index('and')])
-        else:
-            target = ' '.join(split_line[3:split_line.index('for')])
-            weapon = ''
-        damage = int(split_line[split_line.index('for') +1])
-
-    target = target.replace('the ', '')
-    weapon = weapon.replace('the ', '')
-
-    return [target, weapon, damage]
 #endregion
+
 
 #region Healing
 def parse_healing(readf, error_messages):
@@ -923,10 +924,6 @@ def parse_healing(readf, error_messages):
 
     return healing
 
-
-# [21:57:56] You are healed by Norseiaw for 85 hit points.
-# [18:54:28] Your melee buffer absorbs 25 damage!
-# [00:12:27] You steal 35 hit points.
 def parse_healing_and_source(line, is_lifetap, is_absorb):
     """Helper method that finds amount of healing and character providing it"""
     split_line = line.split()
@@ -957,38 +954,11 @@ def parse_healing_and_target(line):
 #endregion
 
 
-def parse_uploaded_file(upload_file, error_messages):
-    """Performs parsing process on 'file'"""
-    response = {}
-    # error_messages = []
-    try:
-        combat = parse_combat(upload_file, error_messages)
-        healing = parse_healing(upload_file, error_messages)
-
-        result = {}
-        # result['Cash'] = cash_flow
-        # result['Combat'] = combat
-        result = combat
-        result['Healing'] = healing
-
-        # response['Combat'] = result
-
-        # result['Crafting'] = craft_parser.parse_crafting(upload_file)
-
-    except IOError:
-        error_messages.append("Failed to open file")
-
-    # response['Messages'] = error_messages
-    # j_result = json.dumps(response)
-    # return j_result
-    return result
-
-
-
-def get_chart_data(melee_events, spell_events, timestamps):
+#region DPS Chart
+def get_chart_data(physical_events, spell_events, timestamps):
     """Compiles data for the DPS chart"""
     total_dps = {}
-    total_dps = aggregate_dps(spell_events, aggregate_dps(melee_events, total_dps))
+    total_dps = aggregate_dps(spell_events, aggregate_dps(physical_events, total_dps))
 
     # for ts in timestamps:
     #     if ts not in total_dps.keys():
@@ -1027,6 +997,45 @@ def aggregate_dps(events, dic):
             dic[event.timestamp] += event.damage_add + event.proc
 
     return dic
+#endregion
+
+
+def dict_to_list(dict_to_convert):
+    """Converts a dictionary to a multi-dimensional array. The first item of the
+        tuple is the key from the dictionary"""
+    result_list = []
+    for name, values in dict_to_convert.items():
+        result_list.append([name] + values.get_all_stats())
+
+    return result_list
+
+
+def parse_uploaded_file(upload_file, error_messages):
+    """Performs parsing process on 'file'"""
+    response = {}
+    # error_messages = []
+    try:
+        combat = parse_combat(upload_file, error_messages)
+        healing = parse_healing(upload_file, error_messages)
+
+        result = {}
+        # result['Cash'] = cash_flow
+        # result['Combat'] = combat
+        result = combat
+        result['Healing'] = healing
+
+        # response['Combat'] = result
+
+        # result['Crafting'] = craft_parser.parse_crafting(upload_file)
+
+    except IOError:
+        error_messages.append("Failed to open file")
+
+    # response['Messages'] = error_messages
+    # j_result = json.dumps(response)
+    # return j_result
+    return result
+
 
 #region Classes
 class Nonlocal(object):
@@ -1035,7 +1044,7 @@ class Nonlocal(object):
     spell_event = None
 
 class MeleeEvent(object):
-    """Tracks all possible attributes of a melee event"""
+    """Tracks all possible attributes of a physical event"""
     def __init__(self):
         self.timestamp = ''
         self.style = ''
@@ -1067,12 +1076,12 @@ class SpellEvent(object):
 class TimeStats(object):
     """Track stats for a timestamp"""
     def __init__(self):
-        self.melee_damage = 0
+        self.physical_damage = 0
         self.spell_damage = 0
 
-    def add_melee_event(self, event):
-        """Records a melee event for the timestamp"""
-        self.melee_damage += event.damage + event.damage_add + event.proc + event.crit
+    def add_physical_event(self, event):
+        """Records a physical event for the timestamp"""
+        self.physical_damage += event.damage + event.damage_add + event.proc + event.crit
 
     def add_spell_event(self, event):
         """Records a spell event for the timestamp"""
@@ -1085,17 +1094,16 @@ class StyleStats(object):
         self.damage = self.max_dmg = self.min_dmg = 0
         self.count = 0
 
-    def add_melee_event(self, event):
-        """Records a melee event for the style"""
+    def add_physical_event(self, event):
+        """Records a physical event for the style"""
         self.count += 1
         if event.damage > 0:
-            total_event_damage = event.damage + event.damage_add + event.proc + event.crit
-            self.damage += total_event_damage
+            self.damage += event.damage
             self.growth_rate += event.growth_rate
-            if self.min_dmg == 0 or total_event_damage < self.min_dmg:
-                self.min_dmg = total_event_damage
-            if total_event_damage > self.max_dmg:
-                self.max_dmg = total_event_damage
+            if self.min_dmg == 0 or event.damage < self.min_dmg:
+                self.min_dmg = event.damage
+            if event.damage > self.max_dmg:
+                self.max_dmg = event.damage
 
     def get_all_stats(self):
         """Returns all values for the Style"""
@@ -1114,8 +1122,8 @@ class WeaponStats(object):
         self.crits = 0
         self.crit_dmg = 0
 
-    def add_melee_event(self, event):
-        """Records a melee event for the weapon"""
+    def add_physical_event(self, event):
+        """Records a physical event for the weapon"""
         if event.damage > 0:
             self.count += 1
 
@@ -1176,7 +1184,7 @@ class SpellStats(object):
             self.min_dmg, self.max_dmg, self.damage]
 
 class MeleeTarget(object):
-    """Tracks stats for melee target"""
+    """Tracks stats for physical target"""
     def __init__(self):
         self.hits = 0
         self.blocks = 0
@@ -1188,8 +1196,8 @@ class MeleeTarget(object):
         self.proc_dmg = 0
         self.max_dmg = self.min_dmg = self.damage = 0
 
-    def add_melee_event(self, event):
-        """Records a melee event for the target"""
+    def add_physical_event(self, event):
+        """Records a physical event for the target"""
         if event.damage > 0:
             self.hits += 1
 

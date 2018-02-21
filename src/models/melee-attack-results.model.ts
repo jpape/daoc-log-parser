@@ -1,4 +1,4 @@
-export class MeleeAttackResults {
+export class PhysicalAttackResults {
     constructor(
         public Hits: number,
         public BaseDamage: number,

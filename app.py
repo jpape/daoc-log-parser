@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, Response
 from flask_cors import CORS
 import json
 import combat_parser
@@ -27,7 +27,7 @@ def capture_upload():
     if file.filename == '' or not allowed_file(file.filename):
         return 'No selected file or incorrect file type'
     else:
-        return handle_uploaded_file(file)
+        return Response(handle_uploaded_file(file), mimetype='application/json')
 
 
 def handle_uploaded_file(upload):

@@ -26,7 +26,7 @@ export class AppComponent implements OnInit{
 
 
   dpsChartData:Array<any> = [];
-  dpsChartLabels:Array<any> = []
+  dpsChartLabels:Array<any> = [];
   dpsChartOptions:any = {
     scaleShowVerticalLines: true,
     responsive: true
@@ -43,109 +43,28 @@ export class AppComponent implements OnInit{
   ]
   dpsLegend: boolean = false;
 
-  tmpCraftingResultsData = [
-    {
-      "name": "94",
-      "series": [
-        {
-          "name": "stable fire adamantium tincture",
-          "value": 12
-        },
-        {
-          "name": "stable cold adamantium tincture",
-          "value": 15
-        },
-        {
-          "name": "stable matter adamantium tincture",
-          "value": 10
-        }
-      ]
-    },
-    {
-      "name": "95",
-      "series": [
-        {
-          "name": "stable fire adamantium tincture",
-          "value": 5
-        },
-        {
-          "name": "stable cold adamantium tincture",
-          "value": 7
-        },
-        {
-          "name": "stable matter adamantium tincture",
-          "value": 4
-        }
-      ]
-    }
-  ]
 
   craftingChartData: any[] = [];
   craftingLabels:Array<any> = ['Fail', '94', '95', '96', '97', '98', '99', '100'];
 
 
-  xpChartData: any[] = []
+  xpChartData: any[] = [];
   xpChartColors = {
     domain: ['#156489','#b57506','#dd8e07','#f8ac29','#fac364','#fbd491','#fde5bd','#dc0d0e']
   }
   xpShowXAxis = true;
 
 
-  errorMessageList = []
+  errorMessageList = [];
   isParsing = false;
-
-  hasCraftTabBeenResized = false;
+  logFileName = '';
 
   resultsIncludeCombat = false;
   resultsIncludeMoney = false;
   resultsIncludeRvr = false;
 
-  fileText = '';
 
   ngOnInit() {
-  }
-
-
-  fileSelected(event) {
-    let fileList: FileList = event.target.files;
-    if (fileList.length > 0) {
-      this.isParsing = true;
-      let file = fileList[0];
-      this.parserService.sendFileToParse(file)
-        .subscribe(
-          (results: any) => {
-            this.isParsing = false;
-            let messages = results['Messages']
-            if (messages) {
-              this.errorMessageList = messages;
-            }
-            let castedResults = results as ParsingResults;
-            if (castedResults) {
-              this.resultsForPage = castedResults;
-              this.pushDataToCharts(castedResults);
-              this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
-              this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
-              this.resultsIncludeRvr = this.checkResultsForRvr(castedResults);
-              // this.loadFileToTextArea(file);
-            }
-          },
-          (error: any) => {
-            alert('Error parsing your log file. Please try again. If the problem persists, please contact system admin.');
-            this.isParsing = false;
-            this.resultsForPage = null;
-          }
-        )
-      }
-    
-  }
-
-  loadFileToTextArea(fileToLoad) {
-    let reader = new FileReader();
-    reader.readAsText(fileToLoad);
-    let me = this;
-    reader.onload = function () {
-      me.fileText = reader.result;
-    }
   }
 
   pushDataToCharts(castedResults: ParsingResults) {
@@ -171,16 +90,15 @@ export class AppComponent implements OnInit{
 
     this.xpChartData = castedResults.PvE.XP;
     this.xpShowXAxis = castedResults.PvE.XP.length < 75;
-    console.log(this.xpShowXAxis)
   }
 
   checkResultsForCombat(castedResults: ParsingResults) {
-    let hasMelee = castedResults.Combat.MeleeAttack.TotalAttacks > 0;
+    let hasPhysical = castedResults.Combat.PhysicalAttack.TotalAttacks > 0;
     let hasCasting = castedResults.Combat.CasterAttack.TotalAttacks > 0;
     let hasDefense = castedResults.Combat.Defense.TotalAttacks > 0;
     let hasHealing = this.checkResultsForRvr(castedResults);
 
-    return hasMelee || hasCasting || hasDefense || hasHealing;
+    return hasPhysical || hasCasting || hasDefense || hasHealing;
   }
 
   checkResultsForMoney(castedResults: ParsingResults) {
@@ -260,5 +178,38 @@ export class AppComponent implements OnInit{
     if (event.tab.textLabel == 'Crafting' || event.tab.textLabel == 'XP') {
       window.dispatchEvent(new Event('resize'));
     }
+  }
+
+  fileSelected(event) {
+    let fileList: FileList = event.target.files;
+    if (fileList.length > 0) {
+      this.isParsing = true;
+      let file = fileList[0];
+      this.logFileName = file.name;
+      this.parserService.sendFileToParse(file)
+        .subscribe(
+          (results: any) => {
+            this.isParsing = false;
+            let messages = results['Messages']
+            if (messages) {
+              this.errorMessageList = messages;
+            }
+            let castedResults = results as ParsingResults;
+            if (castedResults) {
+              this.resultsForPage = castedResults;
+              this.pushDataToCharts(castedResults);
+              this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
+              this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
+              this.resultsIncludeRvr = this.checkResultsForRvr(castedResults);
+            }
+          },
+          (error: any) => {
+            alert('Error parsing your log file. Please try again. If the problem persists, please contact system admin.');
+            this.isParsing = false;
+            this.resultsForPage = null;
+          }
+        )
+      }
+    
   }
 }

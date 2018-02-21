@@ -2,7 +2,11 @@
 
     <input type="file" (change)="fileSelected($event)" placeholder="Select log file" accept=".log, .txt">
     <p *ngIf="isParsing" style="color:red">Parsing...</p>
-
+    <div *ngIf="resultsForPage">
+        <br/>
+        <br/>
+        <p>Results for logfile: {{logFileName}}</p>
+    </div>
     <br/>
     <br/>
 
@@ -151,14 +155,14 @@
                                 </div>
                             </div>
                         </mat-expansion-panel>
-                        <mat-expansion-panel id="melee-caster-attack">
+                        <mat-expansion-panel id="physical-caster-attack">
                             <mat-expansion-panel-header>
                                 <h4>Offense</h4>
                             </mat-expansion-panel-header>
                             <div class="row panel-default panel">
-                                <h4 class="panel-heading">Melee Attack</h4>
+                                <h4 class="panel-heading">Physical Attack</h4>
                                 <div class="panel-body">
-                                    <div class="col-xs-2" id="melee-summary">
+                                    <div class="col-xs-2" id="physical-summary">
                                         <h4>
                                             <strong>Summary:</strong>
                                         </h4>
@@ -172,111 +176,111 @@
                                                 <td>
                                                     <strong>Hit:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Hits | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Hits | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Hits | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Hits | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Blocked:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Blocks | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Blocks | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Blocks | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Blocks | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Parried:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Parries | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Parries | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Parries | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Parries | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Evaded:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Evades | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Evades | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Evades | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Evades | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Missed:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Misses | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Misses | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Misses | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Misses | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Bladeturned:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Bladeturns | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Bladeturns | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Bladeturns | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Bladeturns | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Fumbled:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Fumbles | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Fumbles | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Fumbles | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Fumbles | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Total Attacks:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.TotalAttacks | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.TotalAttacks | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Base Dmg:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.BaseDamage | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.BaseDamage | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Dmg Absorbed:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Absorbed | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Absorbed | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Crits:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Crits | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Crits | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Crits | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Crits | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Crit Dmg:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.CritDamage | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.CritDamage | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Procs:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Procs | number}}</td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.Percents.Procs | percent}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Procs | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Procs | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Proc Dmg:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.ProcDamage | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.ProcDamage | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <strong>Total Dmg:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.MeleeAttack.TotalDamage | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.TotalDamage | number}}</td>
                                                 <td></td>
                                             </tr>
                                         </table>
                                     </div>
-                                    <div class="col-xs-6" id="melee-target-breakdown">
-                                        <div *ngIf="resultsForPage.Combat.MeleeAttack.Targets.length">
+                                    <div class="col-xs-6" id="physical-target-breakdown">
+                                        <div *ngIf="resultsForPage.Combat.PhysicalAttack.Targets.length">
                                             <h4>
                                                 <strong>Targets:</strong>
                                             </h4>
@@ -297,7 +301,7 @@
                                                         <th style="text-align:center">Total Dmg</th>
                                                         <th style="text-align:center">Avg</th>
                                                     </tr>
-                                                    <tr *ngFor="let dmgTarget of resultsForPage.Combat.MeleeAttack.Targets">
+                                                    <tr *ngFor="let dmgTarget of resultsForPage.Combat.PhysicalAttack.Targets">
                                                         <td>
                                                             {{dmgTarget[0]}}
                                                             <a *ngIf="checkIfNameIsPlayer(dmgTarget[0])" href="http://herald.uthgard.net/herald.php?view=stats&p1=player&p2=Player&p3=DESC&p5=Player&p6={{dmgTarget[0]}}"
@@ -312,7 +316,7 @@
                                             </div>
                                         </div>
                                         <br/>
-                                        <div id="melee-weapon-stats" *ngIf="resultsForPage.Combat.MeleeAttack.WeaponStats.length">
+                                        <div id="physical-weapon-stats" *ngIf="resultsForPage.Combat.PhysicalAttack.WeaponStats.length">
                                             <h4>
                                                 <strong>Weapon Stats:</strong>
                                             </h4>
@@ -331,7 +335,7 @@
                                                         <th style="text-align:center">Avg</th>
 
                                                     </tr>
-                                                    <tr *ngFor="let style of resultsForPage.Combat.MeleeAttack.WeaponStats">
+                                                    <tr *ngFor="let style of resultsForPage.Combat.PhysicalAttack.WeaponStats">
                                                         <td>{{style[0]}}</td>
                                                         <td *ngFor="let stat of style.slice(1)" style="text-align:center; border-left:1px black solid">
                                                             {{stat | number}}
@@ -344,8 +348,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-xs-4" id="melee-style-weapon-stats">
-                                        <div id="melee-style-stats" *ngIf="resultsForPage.Combat.MeleeAttack.StyleStats.length">
+                                    <div class="col-xs-4" id="physical-style-weapon-stats">
+                                        <div id="physical-style-stats" *ngIf="resultsForPage.Combat.PhysicalAttack.StyleStats.length">
                                             <h4>
                                                 <strong>Style Stats:</strong>
                                             </h4>
@@ -353,13 +357,13 @@
                                                 <tr>
                                                     <th></th>
                                                     <th style="text-align:center">Count</th>
-                                                    <th style="text-align:center">Avg GR</th>
+                                                    <th style="text-align:center">Avg (+Dmg)</th>
                                                     <th style="text-align:center">Min Dmg</th>
                                                     <th style="text-align:center">Max Dmg</th>
                                                     <th style="text-align:center">Total Dmg</th>
-                                                    <th style="text-align:center">Avg</th>
+                                                    <th style="text-align:center">Avg Dmg</th>
                                                 </tr>
-                                                <tr *ngFor="let style of resultsForPage.Combat.MeleeAttack.StyleStats">
+                                                <tr *ngFor="let style of resultsForPage.Combat.PhysicalAttack.StyleStats">
                                                     <td>{{style[0]}}</td>
                                                     <td *ngFor="let stats of style.slice(1)" style="text-align:center; border-left:1px black solid">
                                                         {{stats | number}}
@@ -500,8 +504,8 @@
                                 </div>
                             </div>
                             <br/>
-                            <div class="row panel panel-default" *ngIf="resultsForPage.Combat.CasterAttack.TotalAttacks || resultsForPage.Combat.MeleeAttack.TotalAttacks">
-                                <h4 class="panel-heading">DPS Graph</h4>
+                            <div class="row panel panel-default" *ngIf="resultsForPage.Combat.CasterAttack.TotalAttacks || resultsForPage.Combat.PhysicalAttack.TotalAttacks">
+                                <h4 class="panel-heading">DPS Graph (Average damage per attack: {{resultsForPage.Combat.DPS | number:'.0-2'}})</h4>
                                 <div class="col-md-12 panel-body">
                                     <div style="display:block;">
                                         <canvas baseChart height="60" [datasets]="dpsChartData" [labels]="dpsChartLabels" [options]="dpsChartOptions" [chartType]="'bar'"
@@ -574,9 +578,9 @@
                                             </tr>
                                             <tr>
                                                 <td>
-                                                    <strong>Tot Melee Attacks:</strong>
+                                                    <strong>Tot Physical Attacks:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.TotalMeleeAttacks | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.TotalPhysicalAttacks | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
@@ -595,9 +599,9 @@
                                             </tr>
                                             <tr>
                                                 <td>
-                                                    <strong>Melee Dmg:</strong>
+                                                    <strong>Physical Dmg:</strong>
                                                 </td>
-                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.MeleeDamage | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.PhysicalDamage | number}}</td>
                                                 <td></td>
                                             </tr>
                                             <tr>
@@ -792,11 +796,6 @@
                 </div>
             </div>
         </mat-tab>
-        <!-- <mat-tab label="Log File">
-            <textarea class="panel panel-default" readonly="true" style="width:100%; height:700px">
-                {{fileText}}
-            </textarea>
-        </mat-tab> -->
         <mat-tab label="XP" [disabled]="resultsForPage.PvE.XP.length == 0">
             <!-- <ngx-charts-area-chart-stacked
                 [results]="xpChartData" 
