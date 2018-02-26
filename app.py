@@ -9,6 +9,7 @@ app = Flask(__name__, static_url_path='', static_folder='dist')
 CORS(app)
 
 ALLOWED_EXTENSIONS = set(['txt', 'log'])
+API_VERSION = 'v2.0'
 
 @app.route('/')
 def index():
@@ -19,8 +20,12 @@ def test_endpoint():
     return render_template('test.html')
 
 
-@app.route('/upload', methods=['POST'])
-def capture_upload():
+@app.route('/upload/<string:version>', methods=['POST'])
+def capture_upload(version):
+    if version != API_VERSION:
+        resp = {}
+        resp['Errors'] = ['Version mismatch']
+        return json.dumps(resp)
     if 'logfile' not in request.files:
         return 'Missing logfile'
     file = request.files['logfile']

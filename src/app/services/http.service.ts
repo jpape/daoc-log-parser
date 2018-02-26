@@ -21,7 +21,6 @@ export class HttpService {
         .subscribe(r => {
             responseSubject.next(r);
         }, err => {
-            // this.handleError(err);
             responseSubject.error(err);
         }, () => {
             responseSubject.complete();

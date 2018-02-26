@@ -2,9 +2,12 @@ export class DefenseResults {
     constructor(
         public Hits: number,
         public Blocks: number,
+        public Guarded_Blocked: number,
+        public Guarding_Blocked: number,
         public TotalDamage: number,
         public SpellDamage: number,
         public Crits: number,
+        public Intercepts: number,
         public MeleeDamage: number,
         public Sources: string[],
         public Misses: number,

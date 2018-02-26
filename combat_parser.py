@@ -8,9 +8,13 @@ import operator
 
 import craft_parser
 
+# Figure out animist / necro / BD pet damage.
+#   Does any line that includes 'damage' but doesn't start with 'You' mean it is pet damage?
+# Find block messages for someone you are guarding
+
+
 #region Message Constants
 CHAT_MESSAGE_INDICATOR = "@@"
-
 
 #region Attack Messages
 MELEE_OFFENSE_ATTACK_MESSAGE = 'You attack'
@@ -55,6 +59,9 @@ MELEE_OFFENSE_ATTACK_BLADE_TURN_MISS_MESSAGE = 'Your strike was absorbed by a ma
 
 MELEE_OFFENSE_ATTACK_ABSORB_MESSAGE = 'A barrier absorbs'
 # [22:02:33] A barrier absorbs 36 damage of your attack!
+
+PET_CASTER_ATTACK_MESSAGE = 'Your pet\'s spell hits'
+# [20:20:11] Your pet's spell hits the hobgoblin whelp for 106 damage!
 #endregion
 
 #region Death/Kills/RP messages
@@ -89,6 +96,15 @@ CASTER_DEFENSE_SPELL_PROC_MESSAGE = 'hits you for'
 # [21:25:47] Aser hits you for 150 damage !
 MELEE_BUFFER_ABSORB_MESSAGE = 'melee buffer absorbs'
 # [18:54:28] Your melee buffer absorbs 25 damage!
+
+MELEE_DEFENSE_GUARD_BLOCKED_MESSAGE = 'blocks you from'
+# [22:35:38] Gorz blocks you from Alonso's attack!
+
+MELEE_DEFENSE_BLOCKED_GUARD_MESSAGE = 'you block'
+# ??
+
+MELEE_DEFENSE_INTERCEPT_MESSAGE = 'steps in front of you and takes the blow!'
+# [00:11:50] The spirit champion steps in front of you and takes the blow!
 
 CASTER_DEFENSE_SPELL_RESISTED_MESSAGE = 'You resist the effect'
 # [21:45:12] You resist the effect!
@@ -146,10 +162,11 @@ def parse_combat(readf, error_messages):
         'Values': dps_results[1]
     }
 
-    total_dmg = sum(dps_results[1])
+    dps = 0
     tot_secs = len(dps_results[0])
-
-    dps = float(total_dmg) / tot_secs
+    if tot_secs:
+        total_dmg = sum(dps_results[1])
+        dps = float(total_dmg) / tot_secs
 
     combat['DPS'] = dps
 
@@ -160,15 +177,15 @@ def check_timestamp_event_type(event_list):
     or spell offensive actions take place"""
     for line in event_list:
         if 'You perform' in line \
-        or 'You attack ' in line \
-        or 'You shot' in line \
-        or 'You miss' in line \
-        or 'You fumble' in line \
-        or 'evades your attack' in line:
+          or 'You attack ' in line \
+          or 'You shot' in line \
+          or 'You miss' in line \
+          or 'You fumble' in line \
+          or 'evades your attack' in line:
             return 'physical'
         elif 'you cast' in line \
-        or 'You hit' in line \
-        or 'resists the effect' in line:
+          or 'You hit' in line \
+          or 'resists the effect' in line:
             return 'spell'
 
     return 'no-op'
@@ -181,6 +198,7 @@ def parse_physical_attack(events, error_messages, should_recurse):
     contains_spell_event = False
 
     mel_events = []
+    pet_events = []
 
     non_local = Nonlocal()
     non_local.mel_event = None
@@ -337,6 +355,27 @@ def parse_physical_attack(events, error_messages, should_recurse):
             mel_events.append(bt_event)
 
             is_bladeturned = True
+        
+        elif 'Your pet\'s spell hits' in line:
+            pet_event = PetAttack(is_physical = False, timestamp = event_timestamp)
+            split_line = line.split()
+            pet_event.target = ' '.join(split_line[split_line.index('hits')+1:split_line.index('for')]).replace('the ', '')
+            pet_event.damage = split_line[split_line.index('for')+1]
+          
+            pet_events.append(pet_event)
+
+        elif ('Your' in line and \
+          ('attacks' in line or 'hit' in line)) \
+          and 'Your attacks' not in line:
+            pet_event = PetAttack(is_physical = True, timestamp = event_timestamp)
+            split_line = line.split()
+            pet_event.damage = split_line[split_line.index('for')+1]
+            if 'hit' in split_line:
+                pet_event.target = ' '.join(split_line[split_line.index('hit')+1:split_line.index('for')]).replace('the ', '')
+            else:
+                pet_event.target = ' '.join(split_line[split_line.index('attacks')+1:split_line.index('and')]).replace('the ', '')
+
+            pet_events.append(pet_event)
 
         elif 'A crystal shield covers' in line:
             continue
@@ -344,7 +383,7 @@ def parse_physical_attack(events, error_messages, should_recurse):
         elif 'no longer hidden' in line:
             if non_local.mel_event is not None:
                 if non_local.mel_event.style != '' \
-                    and non_local.mel_event.damage == 0:
+                  and non_local.mel_event.damage == 0:
                     continue
 
         else:
@@ -383,6 +422,7 @@ def aggregate_physical_events(events_list):
     result['Fumbles'] = 0
     result['Bladeturns'] = 0
     result['Absorbed'] = 0
+    result['Pet_Damage'] = 0
 
     for event in events_list:
         # Targets
@@ -695,13 +735,16 @@ def parse_defense_combat(readf, error_messages):
     sources = {}
     result['Sources'] = []
     result['Blocks'] = 0
+    result['Guarded_Blocked'] = 0
+    result['Guarding_Blocked'] = 0
     result['Parries'] = 0
     result['Evades'] = 0
     result['Hits'] = 0
-    result['MeleeDamage'] = 0
+    result['PhysicalDamage'] = 0
     result['Misses'] = 0
     result['Resists'] = 0
     result['Crits'] = 0
+    result['Intercepts'] = 0
     result['CritDamage'] = 0
     result['Absorbed'] = 0
     result['SpellsLanded'] = 0
@@ -739,7 +782,7 @@ def parse_defense_combat(readf, error_messages):
             elif MELEE_DEFENSE_DAMAGE_RECEIVED_MESSAGE in line:
                 result['Hits'] += 1
                 armor_damage = get_armor_and_damage(line, sources, True, False)
-                result['MeleeDamage'] += armor_damage[1]
+                result['PhysicalDamage'] += armor_damage[1]
 
                 if armor_damage[0] in armor_hits.keys():
                     armor_hits[armor_damage[0]].add_hit_with_damage(armor_damage[1])
@@ -753,6 +796,12 @@ def parse_defense_combat(readf, error_messages):
                 result['SpellDamage'] += armor_damage[1]
             elif MELEE_BUFFER_ABSORB_MESSAGE in line:
                 result['Absorbed'] += parse_healing_and_source(line, False, True)[0]
+            elif MELEE_DEFENSE_GUARD_BLOCKED_MESSAGE in line:
+                result['Guarded_Blocked'] += 1
+            elif MELEE_DEFENSE_INTERCEPT_MESSAGE in line:
+                result['Intercepts'] += 1
+            elif MELEE_DEFENSE_BLOCKED_GUARD_MESSAGE in line:
+                result['Guarding_Blocked'] += 1
         except IndexError as err:
             error_messages.append('DC (line {0}): {1}'.format(current_line, err))
             continue
@@ -763,11 +812,11 @@ def parse_defense_combat(readf, error_messages):
     armor_hits_list = dict_to_list(armor_hits)
     result['ArmorHits'] = sorted(armor_hits_list, key=operator.itemgetter(1), reverse=True)
 
-    result['TotalMeleeAttacks'] = result['Blocks'] + result['Parries'] + result['Evades'] + \
-        result['Hits'] + result['Misses']
+    result['TotalPhysicalAttacks'] = result['Blocks'] + result['Parries'] + result['Evades'] + \
+        result['Hits'] + result['Misses'] + result['Intercepts']
     result['TotalSpellAttacks'] = result['Resists'] + result['SpellsLanded']
-    result['TotalAttacks'] = result['TotalMeleeAttacks'] + result['TotalSpellAttacks']
-    result['TotalDamage'] = result['MeleeDamage'] + result['CritDamage'] + result['SpellDamage']
+    result['TotalAttacks'] = result['TotalPhysicalAttacks'] + result['TotalSpellAttacks']
+    result['TotalDamage'] = result['PhysicalDamage'] + result['CritDamage'] + result['SpellDamage']
 
     try:
         result = calculate_defense_percents(result)
@@ -780,11 +829,11 @@ def calculate_defense_percents(result):
 
     result['Percents'] = {}
 
-    physical_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses']
+    physical_events = ['Hits', 'Blocks', 'Parries', 'Evades', 'Misses', 'Intercepts']
     for event in physical_events:
-        if result['TotalMeleeAttacks'] > 0:
+        if result['TotalPhysicalAttacks'] > 0:
             result['Percents'][event] = '{0:.2f}'.format(
-                float(result[event])/result['TotalMeleeAttacks'])
+                float(result[event])/result['TotalPhysicalAttacks'])
         else:
             result['Percents'][event] = 0
 
@@ -1083,9 +1132,15 @@ class TimeStats(object):
         """Records a physical event for the timestamp"""
         self.physical_damage += event.damage + event.damage_add + event.proc + event.crit
 
+    def add_physical_pet_event(self, event):
+        self.physical_damage += event.damage
+
     def add_spell_event(self, event):
         """Records a spell event for the timestamp"""
         self.spell_damage += event.damage + event.crit
+
+    def add_spell_pet_event(self, event):
+        self.spell_damage += event.damage
 
 class StyleStats(object):
     """Tracks stats for weapon styles"""
@@ -1258,6 +1313,12 @@ class SpellTarget(object):
         return [self.landed, self.resisted, self.crits, self.crit_dmg, \
             self.min_dmg, self.max_dmg, self.damage]
 
+class PetAttack(object):
+    def __init__(self, timestamp, is_physical=False):
+        self.timestamp = timestamp
+        self.target = ''
+        self.damage = 0
+        self.is_physical = is_physical
 
 class DefenseStats(object):
     """Tracks defensive stats per attacker"""

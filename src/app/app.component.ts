@@ -15,7 +15,15 @@ import { MatTableDataSource } from '@angular/material/table';
 })
 export class AppComponent implements OnInit{
   
-  @Input() fileExt: string = "TXT, LOG";
+  TODO = 
+    [
+     'Guard blocks',
+     'Guarded blocks',
+     'Pet intercepts'
+    ];
+
+  fileExt: string[] = ["txt, log"];
+  API_VERSION = 'v2.0';
 
   constructor(
     private parserService: ParserService
@@ -58,6 +66,10 @@ export class AppComponent implements OnInit{
   errorMessageList = [];
   isParsing = false;
   logFileName = '';
+  logFileContent = '';
+  showingLogFile = false;
+
+  currentlyParsedFile: File;
 
   resultsIncludeCombat = false;
   resultsIncludeMoney = false;
@@ -162,7 +174,19 @@ export class AppComponent implements OnInit{
     return result_text
   }
 
-  checkIfNameIsPlayer(name) {
+  dpsChartClicked(ev: any) {
+    let ts = this.dpsChartLabels[ev.active[0]._index];
+    console.log(ts)
+    document.addEventListener('copy', (e: ClipboardEvent) => {
+      e.clipboardData.setData('text/plain', ts);
+      e.preventDefault();
+      // document.removeEventListener('copy');
+    });
+    document.execCommand('copy');
+    // console.log(ev)
+  }
+
+  checkIfNameIsPlayer(name: string) {
     if (name.indexOf(' ') > -1) {
       return false;
     }
@@ -181,26 +205,33 @@ export class AppComponent implements OnInit{
   }
 
   fileSelected(event) {
+    this.showingLogFile = false;
+    this.logFileContent = '';
     let fileList: FileList = event.target.files;
     if (fileList.length > 0) {
+      this.currentlyParsedFile = fileList[0];
+      this.logFileName = this.currentlyParsedFile.name;
       this.isParsing = true;
-      let file = fileList[0];
-      this.logFileName = file.name;
-      this.parserService.sendFileToParse(file)
+      this.parserService.sendFileToParse(this.currentlyParsedFile, this.API_VERSION)
         .subscribe(
           (results: any) => {
             this.isParsing = false;
-            let messages = results['Messages']
-            if (messages) {
-              this.errorMessageList = messages;
+            if (results['Errors']) {
+              alert('This page is out of date. Please refresh the page and try again. \rWindows key combination: Ctrl + F5')
             }
-            let castedResults = results as ParsingResults;
-            if (castedResults) {
-              this.resultsForPage = castedResults;
-              this.pushDataToCharts(castedResults);
-              this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
-              this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
-              this.resultsIncludeRvr = this.checkResultsForRvr(castedResults);
+            else {
+              let messages = results['Messages']
+              if (messages) {
+                this.errorMessageList = messages;
+              }
+              let castedResults = results as ParsingResults;
+              if (castedResults) {
+                this.resultsForPage = castedResults;
+                this.pushDataToCharts(castedResults);
+                this.resultsIncludeCombat = this.checkResultsForCombat(castedResults);
+                this.resultsIncludeMoney = this.checkResultsForMoney(castedResults);
+                this.resultsIncludeRvr = this.checkResultsForRvr(castedResults);
+              }
             }
           },
           (error: any) => {
@@ -209,7 +240,17 @@ export class AppComponent implements OnInit{
             this.resultsForPage = null;
           }
         )
-      }
-    
+    }
+  }
+
+  showLogFile() {
+    this.logFileContent = 'Loading...'
+    this.showingLogFile = true;
+    let reader = new FileReader();
+    reader.readAsText(this.currentlyParsedFile);
+    let me = this;
+    reader.onload = function () {
+      me.logFileContent = reader.result;
+    }
   }
 }

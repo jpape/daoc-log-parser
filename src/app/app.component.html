@@ -172,49 +172,49 @@
                                                 <th style="text-align:center">Count</th>
                                                 <th style="text-align:center">Percent</th>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Hits">
                                                 <td>
                                                     <strong>Hit:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Hits | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Hits | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Blocks">
                                                 <td>
                                                     <strong>Blocked:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Blocks | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Blocks | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Parries">
                                                 <td>
                                                     <strong>Parried:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Parries | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Parries | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Evades">
                                                 <td>
                                                     <strong>Evaded:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Evades | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Evades | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Misses">
                                                 <td>
                                                     <strong>Missed:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Misses | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Misses | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Bladeturns">
                                                 <td>
                                                     <strong>Bladeturned:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Bladeturns | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Bladeturns | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Fumbles">
                                                 <td>
                                                     <strong>Fumbled:</strong>
                                                 </td>
@@ -235,35 +235,35 @@
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.BaseDamage | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Absorbed">
                                                 <td>
                                                     <strong>Dmg Absorbed:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Absorbed | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Crits">
                                                 <td>
                                                     <strong>Crits:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Crits | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Crits | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Crits">
                                                 <td>
                                                     <strong>Crit Dmg:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.CritDamage | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Procs">
                                                 <td>
                                                     <strong>Procs:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Procs | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.PhysicalAttack.Percents.Procs | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.PhysicalAttack.Procs">
                                                 <td>
                                                     <strong>Proc Dmg:</strong>
                                                 </td>
@@ -506,10 +506,17 @@
                             <br/>
                             <div class="row panel panel-default" *ngIf="resultsForPage.Combat.CasterAttack.TotalAttacks || resultsForPage.Combat.PhysicalAttack.TotalAttacks">
                                 <h4 class="panel-heading">DPS Graph (Average damage per attack: {{resultsForPage.Combat.DPS | number:'.0-2'}})</h4>
+                                <p style="color:red">Clicking on a bar will copy the timestamp to your clipboard, making it easier to find the events in your log file</p>
                                 <div class="col-md-12 panel-body">
                                     <div style="display:block;">
-                                        <canvas baseChart height="60" [datasets]="dpsChartData" [labels]="dpsChartLabels" [options]="dpsChartOptions" [chartType]="'bar'"
-                                            [colors]="dpsChartColors" [legend]="dpsLegend"></canvas>
+                                        <canvas baseChart height="60"
+                                            [datasets]="dpsChartData"
+                                            [labels]="dpsChartLabels"
+                                            [options]="dpsChartOptions"
+                                            [chartType]="'bar'"
+                                            [colors]="dpsChartColors"
+                                            [legend]="dpsLegend"
+                                            (chartClick)="dpsChartClicked($event)"></canvas>
                                     </div>
                                     <!-- <ngx-charts-bar-vertical
                                         [results]="dpsChartData"
@@ -541,40 +548,47 @@
                                                     <strong>Percent</strong>
                                                 </th>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Hits">
                                                 <td>
                                                     <strong>Hits:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Hits | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Hits | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Blocks">
                                                 <td>
                                                     <strong>Blocks:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Blocks | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Blocks | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Parries">
                                                 <td>
                                                     <strong>Parries:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Parries | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Parries | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Evades">
                                                 <td>
                                                     <strong>Evades:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Evades | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Evades | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Misses">
                                                 <td>
                                                     <strong>Misses:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Misses | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Misses | percent}}</td>
+                                            </tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Intercepts">
+                                                <td>
+                                                    <strong>Intercepts:</strong>
+                                                </td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.Intercepts | number}}</td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.Intercepts | percent}}</td>
                                             </tr>
                                             <tr>
                                                 <td>
@@ -583,42 +597,42 @@
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.TotalPhysicalAttacks | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Crits">
                                                 <td>
                                                     <strong>Crits:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Crits | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Crits">
                                                 <td>
                                                     <strong>Crit Dmg:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.CritDamage | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.PhysicalDamage">
                                                 <td>
                                                     <strong>Physical Dmg:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.PhysicalDamage | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Absorbed">
                                                 <td>
                                                     <strong>Dmg Absorbed:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Absorbed | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.SpellsLanded">
                                                 <td>
                                                     <strong>Spells/Procs:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.SpellsLanded | number}}</td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.Percents.SpellsLanded | percent}}</td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Resists">
                                                 <td>
                                                     <strong>Resists:</strong>
                                                 </td>
@@ -632,7 +646,7 @@
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.TotalSpellAttacks | number}}</td>
                                                 <td></td>
                                             </tr>
-                                            <tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.SpellDamage">
                                                 <td>
                                                     <strong>Spell Dmg:</strong>
                                                 </td>
@@ -644,6 +658,20 @@
                                                     <strong>Total Dmg:</strong>
                                                 </td>
                                                 <td style="text-align:center">{{resultsForPage.Combat.Defense.TotalDamage | number}}</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Guarding_Blocked">
+                                                <td>
+                                                    <strong>Guarding Blocks:</strong>
+                                                </td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.Guarding_Blocked | number}}</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr *ngIf="resultsForPage.Combat.Defense.Guarded_Blocked">
+                                                <td>
+                                                    <strong>Guarded Blocks:</strong>
+                                                </td>
+                                                <td style="text-align:center">{{resultsForPage.Combat.Defense.Guarded_Blocked | number}}</td>
                                                 <td></td>
                                             </tr>
                                         </table>
@@ -824,6 +852,12 @@
                 [barPadding]="1"
                 [showXAxisLabel]="'true'">
             </ngx-charts-bar-vertical-2d>
+        </mat-tab>
+        <mat-tab label="Log File" *ngIf="currentlyParsedFile" style="height:100%">
+            <button type="button" (click)="showLogFile()" *ngIf="!showingLogFile">Show log file</button>
+            <textarea *ngIf="logFileContent" class="panel panel-default" readonly="true" style="width:100%; height:700px">
+                {{logFileContent}}
+            </textarea>
         </mat-tab>
     </mat-tab-group>
 

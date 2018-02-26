@@ -13,13 +13,13 @@ export class ParserService {
     private httpService: HttpService
   ) { }
 
-  sendFileToParse(file) : Observable<Response> {
+  sendFileToParse(file, api_version) : Observable<Response> {
     let formData:FormData = new FormData();
     formData.append('logfile', file, file.name);
     let optHeaders = new Headers();
     optHeaders.append('Accept', 'application/json');
     let options = new RequestOptions({ headers: optHeaders});
-    return this.httpService.post(`${environment.parserUploadUrl}/upload`, formData, options)
+    return this.httpService.post(`${environment.parserUploadUrl}/upload/` + api_version, formData, options)
       .map((response: Response) => {
         let res = response.json();
         return res;
