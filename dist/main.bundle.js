@@ -182,14 +182,11 @@ var AppComponent = (function () {
     };
     AppComponent.prototype.dpsChartClicked = function (ev) {
         var ts = this.dpsChartLabels[ev.active[0]._index];
-        console.log(ts);
         document.addEventListener('copy', function (e) {
             e.clipboardData.setData('text/plain', ts);
             e.preventDefault();
-            // document.removeEventListener('copy');
         });
         document.execCommand('copy');
-        // console.log(ev)
     };
     AppComponent.prototype.checkIfNameIsPlayer = function (name) {
         if (name.indexOf(' ') > -1) {

@@ -87,18 +87,35 @@ def parse_cash_flow(readf, error_messages):
     return result
 
 def parse_money_denomination(line):
+    print(line)
+    split_line = line.split()
     """Finds each currency denomination and breaks it all down to copper"""
     money_total = 0
-    if line.find('plat') != -1:
-        plat_text = line[line.find('plat')-4:line.find('gold')]
-        money_total += 10000000 * int(plat_text.split()[line(plat_text.split())-1])
-    if line.find('gold') != -1:
-        gold_text = line[line.find('gold')-4:line.find('gold')]
-        money_total += 10000 * int(gold_text.split()[len(gold_text.split())-1])
-    if line.find('silver') != -1:
-        money_total += 100 * int(line[line.find('silver')-3:line.find('silver')-1])
+    if 'plat' in line:
+        if 'plat,' in line:
+            plat_text = split_line[split_line.index('plat,')-1]
+        else:
+            plat_text = split_line[split_line.index('plat')-1]
+        if type(plat_text) is int:
+            money_total += 10000000 * int(plat_text)
+    if 'gold' in line:
+        if 'gold,' in line:
+            gold_text = split_line[split_line.index('gold,')-1]
+        else:
+            gold_text = split_line[split_line.index('gold')-1]
+        if type(gold_text) is int:
+            money_total += 10000 * int(gold_text)
+    if 'silver' in line:
+        if 'silver,' in line:
+            silver_text = split_line[split_line.index('silver,')-1]
+        else:
+            silver_text = split_line[split_line.index('silver')-1]
+        if type(silver_text) is int:
+            money_total += 100 * int(silver_text)
     if line.find('copper') != -1:
-        money_total += int(line[line.find('copper')-3:line.find('copper')-1])
+        copper_text = split_line[split_line.index('copper')-1]
+        if type(copper_text) is int:
+            money_total += int(copper_text)
 
     return money_total
 

@@ -356,26 +356,27 @@ def parse_physical_attack(events, error_messages, should_recurse):
 
             is_bladeturned = True
         
-        elif 'Your pet\'s spell hits' in line:
-            pet_event = PetAttack(is_physical = False, timestamp = event_timestamp)
-            split_line = line.split()
-            pet_event.target = ' '.join(split_line[split_line.index('hits')+1:split_line.index('for')]).replace('the ', '')
-            pet_event.damage = split_line[split_line.index('for')+1]
+        # elif 'Your pet\'s spell hits' in line:
+        #     pet_event = PetAttack(is_physical = False, timestamp = event_timestamp)
+        #     split_line = line.split()
+        #     pet_event.target = ' '.join(split_line[split_line.index('hits')+1:split_line.index('for')]).replace('the ', '')
+        #     pet_event.damage = split_line[split_line.index('for')+1]
           
-            pet_events.append(pet_event)
+        #     pet_events.append(pet_event)
 
-        elif ('Your' in line and \
-          ('attacks' in line or 'hit' in line)) \
-          and 'Your attacks' not in line:
-            pet_event = PetAttack(is_physical = True, timestamp = event_timestamp)
-            split_line = line.split()
-            pet_event.damage = split_line[split_line.index('for')+1]
-            if 'hit' in split_line:
-                pet_event.target = ' '.join(split_line[split_line.index('hit')+1:split_line.index('for')]).replace('the ', '')
-            else:
-                pet_event.target = ' '.join(split_line[split_line.index('attacks')+1:split_line.index('and')]).replace('the ', '')
+        # elif ('Your' in line and \
+        #   ('attacks' in line or 'hit' in line)) \
+        #   and 'Your attacks' not in line \
+        #   and 'Your standing' not in line:
+        #     pet_event = PetAttack(is_physical = True, timestamp = event_timestamp)
+        #     split_line = line.split()
+        #     pet_event.damage = split_line[split_line.index('for')+1]
+        #     if 'hit' in split_line:
+        #         pet_event.target = ' '.join(split_line[split_line.index('hit')+1:split_line.index('for')]).replace('the ', '')
+        #     else:
+        #         pet_event.target = ' '.join(split_line[split_line.index('attacks')+1:split_line.index('and')]).replace('the ', '')
 
-            pet_events.append(pet_event)
+        #     pet_events.append(pet_event)
 
         elif 'A crystal shield covers' in line:
             continue

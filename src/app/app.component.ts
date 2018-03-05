@@ -176,14 +176,11 @@ export class AppComponent implements OnInit{
 
   dpsChartClicked(ev: any) {
     let ts = this.dpsChartLabels[ev.active[0]._index];
-    console.log(ts)
     document.addEventListener('copy', (e: ClipboardEvent) => {
       e.clipboardData.setData('text/plain', ts);
       e.preventDefault();
-      // document.removeEventListener('copy');
     });
     document.execCommand('copy');
-    // console.log(ev)
   }
 
   checkIfNameIsPlayer(name: string) {
