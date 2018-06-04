@@ -10,6 +10,8 @@ MONEY_RECEIVED_MESSAGE = 'gives you'
 # [15:04:51] Galdur Bonsavoir gives you 25 silver pieces for 2 earthen distill.
 MONEY_SPENT_MESSAGE = 'You just bought'
 # [15:05:42] You just bought an ancient treant wood for 20 silver pieces.
+BG_LOOT_SHARE_MESAGE = 'Your share of the loot'
+# [10:09:40] Your share of the loot is 29 silver and 72 copper pieces.
 #endregion
 
 def parse_pve(readf, error_messages):
@@ -75,7 +77,7 @@ def parse_cash_flow(readf, error_messages):
                 money_gained += parse_money_denomination(line)
             elif MONEY_SPENT_MESSAGE in line:
                 money_spent += parse_money_denomination(line)
-            elif GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line:
+            elif GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line or BG_LOOT_SHARE_MESAGE in line:
                 money_looted += parse_money_denomination(line)
         except IndexError as err:
             error_messages.append('TM (line {0}): {1}'.format(current_line, err))
@@ -87,7 +89,6 @@ def parse_cash_flow(readf, error_messages):
     return result
 
 def parse_money_denomination(line):
-    print(line)
     split_line = line.split()
     """Finds each currency denomination and breaks it all down to copper"""
     money_total = 0
@@ -96,26 +97,26 @@ def parse_money_denomination(line):
             plat_text = split_line[split_line.index('plat,')-1]
         else:
             plat_text = split_line[split_line.index('plat')-1]
-        if type(plat_text) is int:
-            money_total += 10000000 * int(plat_text)
+        # if type(plat_text) is int:
+        money_total += 10000000 * int(plat_text)
     if 'gold' in line:
         if 'gold,' in line:
             gold_text = split_line[split_line.index('gold,')-1]
         else:
             gold_text = split_line[split_line.index('gold')-1]
-        if type(gold_text) is int:
-            money_total += 10000 * int(gold_text)
+        # if type(gold_text) is int:
+        money_total += 10000 * int(gold_text)
     if 'silver' in line:
         if 'silver,' in line:
             silver_text = split_line[split_line.index('silver,')-1]
         else:
             silver_text = split_line[split_line.index('silver')-1]
-        if type(silver_text) is int:
-            money_total += 100 * int(silver_text)
+        # if type(silver_text) is int:
+        money_total += 100 * int(silver_text)
     if line.find('copper') != -1:
         copper_text = split_line[split_line.index('copper')-1]
-        if type(copper_text) is int:
-            money_total += int(copper_text)
+        # if type(copper_text) is int:
+        money_total += int(copper_text)
 
     return money_total
 

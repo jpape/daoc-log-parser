@@ -19,7 +19,8 @@ export class AppComponent implements OnInit{
     [
      'Guard blocks',
      'Guarded blocks',
-     'Pet intercepts'
+     'Pet intercepts',
+     'Guild tax'
     ];
 
   fileExt: string[] = ["txt, log"];

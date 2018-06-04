@@ -550,7 +550,7 @@ def parse_caster_attack(events, error_messages, should_recurse):
                 target_weapon_damage = get_target_weapon_and_damage(line, False, True)
 
                 if non_local.spell_event is None:
-                    error_messages.append('Spell proc without base dmg')
+                    error_messages.append('Spell proc without base dmg: ' + line)
                 else:
                     non_local.spell_event.crit = target_weapon_damage[2]
 
@@ -1062,28 +1062,18 @@ def dict_to_list(dict_to_convert):
 
 def parse_uploaded_file(upload_file, error_messages):
     """Performs parsing process on 'file'"""
-    response = {}
-    # error_messages = []
+    result = {}
+
     try:
         combat = parse_combat(upload_file, error_messages)
         healing = parse_healing(upload_file, error_messages)
 
-        result = {}
-        # result['Cash'] = cash_flow
-        # result['Combat'] = combat
         result = combat
         result['Healing'] = healing
-
-        # response['Combat'] = result
-
-        # result['Crafting'] = craft_parser.parse_crafting(upload_file)
 
     except IOError:
         error_messages.append("Failed to open file")
 
-    # response['Messages'] = error_messages
-    # j_result = json.dumps(response)
-    # return j_result
     return result
 
 
