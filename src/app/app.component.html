@@ -787,6 +787,12 @@
                             </td>
                             <td style="text-align:center">{{currencyPrintHelper(resultsForPage.PvE.Monies.Loot)}}</td>
                         </tr>
+                        <tr *ngIf="currencyPrintHelper(resultsForPage.PvE.Monies.Taxed) != ''">
+                            <td>
+                                <strong>Taxed:</strong>
+                            </td>
+                            <td style="text-align:center">{{currencyPrintHelper(resultsForPage.PvE.Monies.Taxed)}}</td>
+                        </tr>
                         <tr *ngIf="currencyPrintHelper(resultsForPage.PvE.Monies.Expense) != ''">
                             <td>
                                 <strong>Expenses:</strong>

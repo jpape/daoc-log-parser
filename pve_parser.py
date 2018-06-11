@@ -12,6 +12,8 @@ MONEY_SPENT_MESSAGE = 'You just bought'
 # [15:05:42] You just bought an ancient treant wood for 20 silver pieces.
 BG_LOOT_SHARE_MESAGE = 'Your share of the loot'
 # [10:09:40] Your share of the loot is 29 silver and 72 copper pieces.
+GUILD_TAX_MESSAGE = 'Your guild due'
+# [22:05:02] Your guild due(5%) is 11 silver and 67 copper pieces.
 #endregion
 
 def parse_pve(readf, error_messages):
@@ -35,7 +37,7 @@ def parse_loot(readf, error_messages):
                 if dead_mob not in mob_drops.keys():
                     mob_drops[dead_mob] = MobDropList()
                 mob_drops[dead_mob].add_death()
-            elif 'drops a' in line:
+            elif 'drops a' in line or 'drops the' in line:
                 split_line = line.split()
                 mob = ' '.join(split_line[1:split_line.index('drops')])
                 drop = ' '.join(split_line[split_line.index('drops')+1:])
@@ -57,7 +59,7 @@ def parse_loot(readf, error_messages):
             deaths, drop_list = drops.get_all_stats()
             results.append([mob, deaths, drop_list])
 
-    return results
+    return sorted(results, key=operator.itemgetter(1), reverse=True)
 
 #region Money
 def parse_cash_flow(readf, error_messages):
@@ -68,6 +70,7 @@ def parse_cash_flow(readf, error_messages):
     money_spent = 0
     money_gained = 0
     money_looted = 0
+    money_taxed = 0
     for line in readf:
         current_line += 1
         try:
@@ -79,12 +82,15 @@ def parse_cash_flow(readf, error_messages):
                 money_spent += parse_money_denomination(line)
             elif GOLD_PICKUP_MESSAGE in line or GOLD_FOR_KILL_MESSAGE in line or BG_LOOT_SHARE_MESAGE in line:
                 money_looted += parse_money_denomination(line)
+            elif GUILD_TAX_MESSAGE in line:
+                money_taxed += parse_money_denomination(line)
         except IndexError as err:
             error_messages.append('TM (line {0}): {1}'.format(current_line, err))
             continue
     result['Income'] = currency_breakdown(money_gained)
     result['Expense'] = currency_breakdown(money_spent)
     result['Loot'] = currency_breakdown(money_looted)
+    result['Taxed'] = currency_breakdown(money_taxed)
 
     return result
 

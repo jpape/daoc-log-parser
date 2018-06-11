@@ -18,8 +18,6 @@ export class AppComponent implements OnInit{
   TODO = 
     [
      'Guard blocks',
-     'Guarded blocks',
-     'Pet intercepts',
      'Guild tax'
     ];
 
